@@ -1,0 +1,36 @@
+{
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "lint": "eslint --ext .js,.vue --ignore-path .gitignore --fix src",
+        "format": "prettier .  --write"
+    },
+    "devDependencies": {
+        "@inertiajs/vue3": "^2.0.0",
+        "@mdi/font": "^7.4.47",
+        "@vitejs/plugin-vue": "^5.1.0",
+        "axios": "^1.8.4",
+        "esbuild": "^0.25.0",
+        "eslint": "^9.19.0",
+        "eslint-config-prettier": "^10.0.1",
+        "eslint-plugin-prettier": "^5.2.5",
+        "eslint-plugin-vue": "^10.0.0",
+        "laravel-vite-plugin": "^1.0.5",
+        "prettier": "3.5.3",
+        "vite": "^6.2.3",
+        "vite-plugin-vuetify": "^2.0.4",
+        "vue": "^3.5.13",
+        "vuetify": "^3.7.19"
+    },
+    "dependencies": {
+        "crypto-js": "^4.2.0",
+        "html5-qrcode": "^2.3.8",
+        "moment-timezone": "^0.5.48",
+        "pinia": "^3.0.1",
+        "vue-toastification": "^2.0.0-rc.5",
+        "vue3-charts": "^1.1.33",
+        "vuedraggable": "^4.1.0"
+    }
+}
