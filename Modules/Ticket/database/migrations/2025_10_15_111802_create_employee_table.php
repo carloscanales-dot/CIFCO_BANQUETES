@@ -11,12 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('fairs', function (Blueprint $table) {
-            $table->unsignedInteger('fair_id',$autoIncrement = true);
-            $table->string('fair_name',65);
-            $table->date('start_date');
-            $table->date('end_date');
-            $table->integer('status')->default('2');            
+        Schema::create('employee', function (Blueprint $table) {
+            $table->unsignedInteger('employee_id',$autoIncrement = true);
+            $table->string('employee_name',65);
+            $table->string('employee_area',65);
             $table->timestamps();
         });
     }
@@ -26,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('fairs');
+        Schema::dropIfExists('employee');
     }
 };

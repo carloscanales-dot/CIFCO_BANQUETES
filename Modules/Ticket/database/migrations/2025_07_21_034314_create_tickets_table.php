@@ -12,15 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tickets', function (Blueprint $table) {
-            $table->unsignedInteger('ticket_id',$autoIncrement = true);
-            $table->string('uuid',125);
-            $table->enum('status',['D','C','A'])->default('D');
-            $table->unsignedInteger('product_id');
-            $table->unsignedInteger('user_id');
+            $table->unsignedInteger('ticket_id', $autoIncrement = true);
+            $table->string('uuid', 125)->unique(true); // UUID del ticket
+            $table->integer('status')->default('1'); // Estado del ticket
+            $table->unsignedInteger('product_id'); // Producto canjeado
+            $table->timestamp('redeem_date'); // Fecha de canje
             $table->timestamps();
 
             $table->foreign('product_id')->references('product_id')->on('products')->onUpdate('cascade');
-            $table->foreign('user_id')->references('user_id')->on('users')->onUpdate('cascade');
         });
     }
 

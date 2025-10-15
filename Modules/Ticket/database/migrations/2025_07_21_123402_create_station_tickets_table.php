@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('station_tickets', function (Blueprint $table) {
-            $table->unsignedInteger('station_ticket_id', $autoIncrement = true);
             $table->unsignedInteger('ticket_id');
-            $table->unsignedInteger('station_user_id');
+            $table->unsignedInteger('station_id');
+            // $table->unsignedInteger('user_id');
             $table->timestamps();
 
             $table->foreign('ticket_id')->references('ticket_id')->on('tickets')->onUpdate('cascade');
-            $table->foreign('station_user_id')->references('station_user_id')->on('station_users')->onUpdate('cascade');
+            $table->foreign('station_id')->references('station_id')->on('station')->onUpdate('cascade');
         });
     }
 

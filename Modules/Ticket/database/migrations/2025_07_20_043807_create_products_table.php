@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('prefix', 10)->unique();
             $table->string('product_name', 125);
             $table->decimal('unit_price', 10, 2);
-            $table->enum('status', ['Activo', 'Inactivo'])->default('Activo');
+            $table->boolean('status')->default('1');
             $table->timestamps();
         });
     }

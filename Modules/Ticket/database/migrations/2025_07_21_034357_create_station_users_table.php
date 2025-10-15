@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('station_users', function (Blueprint $table) {
-            $table->unsignedInteger('station_user_id',$autoIncrement = true);
+            // $table->unsignedInteger('station_user_id',$autoIncrement = true);
             $table->unsignedInteger('station_id');
             $table->unsignedInteger('user_id');
             $table->timestamps();
