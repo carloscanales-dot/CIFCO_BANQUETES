@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('station_products', function (Blueprint $table) {
+        Schema::create('account_detail', function (Blueprint $table) {
+            $table->foreignId('account_id')->constrained('account')->onUpdate('cascade');
             $table->foreignId('product_id')->constrained('products')->onUpdate('cascade');
-            $table->foreignId('station_id')->constrained('stations')->onUpdate('cascade');
+            $table->foreignId('transaction_id')->constrained('transactions')->onUpdate('cascade');
+            $table->unsignedInteger('quantity');
+            $table->date('transaction_date');
             $table->timestamps();
-
-            $table->unique(['product_id', 'station_id']);
         });
     }
 
@@ -25,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('station_product');
+        Schema::dropIfExists('account_detail');
     }
 };

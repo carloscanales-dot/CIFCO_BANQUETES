@@ -20,6 +20,7 @@ return new class extends Migration
             $table->enum('role', ['Administrador', 'Empleado', 'Lector'])->default('Administrador');
             $table->integer('id_rol')->default(2)->nullable(false);
             $table->rememberToken();
+            $table->boolean('status')->default(false);
             $table->timestamps();
         });
     }

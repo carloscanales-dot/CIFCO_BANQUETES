@@ -12,8 +12,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('location', function (Blueprint $table) {
-            $table->unsignedInteger('location_id', $autoIncrement = true);
+            $table->id('location_id');
             $table->string('location_name', 65);
+            $table->foreignId('fair_id')->constrained('fairs')->onUpdate('cascade');
             $table->timestamps();
         });
     }

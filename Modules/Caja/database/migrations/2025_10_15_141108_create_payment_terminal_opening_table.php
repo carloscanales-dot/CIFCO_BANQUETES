@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('station_users', function (Blueprint $table) {
-            $table->foreignId('station_id')->constrained('stations')->onUpdate('cascade');
+        Schema::create('payment_terminal_opening', function (Blueprint $table) {
+            $table->id('payment_terminal_opening_id');
+            $table->foreignId('payment_terminal_id')->constrained('payment_terminal')->onUpdate('cascade');
             $table->foreignId('user_id')->constrained('users')->onUpdate('cascade');
+            $table->timestamp('opening_date');
+            $table->decimal('opening_amount', 10, 2);
             $table->timestamps();
-
-            $table->unique(['station_id', 'user_id']);
         });
     }
 
@@ -25,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('station_users');
+        Schema::dropIfExists('payment_terminal_opening');
     }
 };

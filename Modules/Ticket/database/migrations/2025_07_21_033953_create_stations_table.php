@@ -12,20 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('stations', function (Blueprint $table) {
-            $table->unsignedInteger('station_id', $autoIncrement = true);
+            $table->id('station_id');
             $table->string('station_name', 100); // Nombre de la estación
-            $table->boolean('status')->default('1'); // Estado de la estación
-            $table->unsignedInteger('location_id'); // Ubicacion asignada a la estación
-            $table->unsignedInteger('fair_id'); // A que feria perteneció la estación
+            $table->boolean('status')->default(false); // Estado de la estación
+            $table->foreignId('location_id')->constrained('location')->onUpdate('cascade'); // Ubicación asignada
+            $table->foreignId('fair_id')->constrained('fairs')->onUpdate('cascade'); // Feria a la que pertenece
+            //$table->foreignId('user_id')->constrained('users')->onUpdate('cascade'); // Usuario responsable (podría omitirlo si se ocupará la tabla payment_terminal)
             $table->timestamps();
-
-            $table->foreign('user_id')->references('user_id')->on('users')->onUpdate('cascade');
-            $table->foreign('location_id')->references('location_id')->on('location')->onUpdate('cascade');
         });
     }
 
     /**
-     * Reverse the migrations.
+     * Reverse the migrations.as
      */
     public function down(): void
     {

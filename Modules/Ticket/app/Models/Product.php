@@ -3,42 +3,38 @@
 namespace Modules\Ticket\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+
 
 class Product extends Model
 {
     protected $table = 'products';
-
-    /**
-     * @var string primary key
-     */
     protected $primaryKey = 'product_id';
 
-    /**
-     * The attributes that are mass assignable.
-     */
     protected $fillable = [
         'prefix',
         'product_name',
         'unit_price',
+        'cost',
         'status',
     ];
 
+    protected $casts = [
+        'status' => 'boolean',
+        'unit_price' => 'decimal:2',
+        'cost' => 'decimal:2',
+    ];
 
     /**
-     * Get the operations for the part.
+     * Scope para obtener solo productos activos.
      */
-    public function tickets(): HasMany
+    public function scopeActive($query)
     {
-        return $this->hasMany(Ticket::class, 'product_id');
+        return $query->where('status', true);
     }
-
-    /**
-     * Get the operations for the part.
-     */
     public function stations(): BelongsToMany
     {
-        return $this->belongsToMany(Station::class, 'station_products');
+        return $this->belongsToMany(Station::class, 'station_products', 'product_id', 'station_id')
+            ->withTimestamps();
     }
 }

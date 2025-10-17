@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('status', function (Blueprint $table) {
-            $table->id();
+        Schema::create('printer', function (Blueprint $table) {
+            $table->id('printer_id');
+            $table->string('printer_name', 65);
+            $table->boolean('status')->default(false);
+            $table->foreignId('station_id')->constrained('stations')->onUpdate('cascade');
+            $table->string('ip_adress')->nullable(true);
             $table->timestamps();
         });
     }
@@ -22,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('status');
+        Schema::dropIfExists('printer');
     }
 };

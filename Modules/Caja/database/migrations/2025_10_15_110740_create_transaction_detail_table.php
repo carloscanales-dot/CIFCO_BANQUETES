@@ -12,16 +12,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transaction_detail', function (Blueprint $table) {
-            $table->unsignedInteger('transaction_detail_id', $autoIncrement = true);
-            $table->unsignedInteger('transaction_id');
-            $table->unsignedInteger('product_id');
+            $table->id('transaction_detail_id');
+            $table->foreignId('transaction_id')->constrained('transactions')->onUpdate('cascade');
+            $table->foreignId('product_id')->constrained('products')->onUpdate('cascade');
             $table->unsignedInteger('quantity');
             $table->decimal('unit_price', 10, 2);
             $table->decimal('total', 10, 2);
             $table->timestamps();
-
-            $table->foreign('transaction_id')->references('transaction_id')->on('transactions')->onUpdate('cascade');
-            $table->foreign('product_id')->references('product_id')->on('products')->onUpdate('cascade');
         });
     }
 

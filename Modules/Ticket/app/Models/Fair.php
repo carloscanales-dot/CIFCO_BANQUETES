@@ -22,9 +22,11 @@ class Fair extends Model
         'start_date',
         'end_date',
         'status',
-        'user_id'
     ];
-
+    public function locations()
+    {
+        return $this->hasMany(Location::class, 'fair_id');
+    }
     public static function boot()
     {
         parent::boot();

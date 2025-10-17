@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transaction_type', function (Blueprint $table) {
-            $table->id();
+            $table->id('transaction_type_id');
+            $table->string('transaction_type', 65  );
             $table->timestamps();
         });
     }
