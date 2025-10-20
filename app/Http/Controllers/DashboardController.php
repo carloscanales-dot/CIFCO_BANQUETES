@@ -19,6 +19,22 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard');
     }
 
+    // Renderiza la vista de landing
+    public function landing()
+    {
+        return Inertia::render('Landing');
+    }
+
+    public function ventas()
+    {
+        return Inertia::render('Ventas');
+    }
+
+    public function creditos()
+    {
+        return Inertia::render('Creditos');
+    }
+
     // Devuelve los datos para las gráficas
     public function charts()
     {
