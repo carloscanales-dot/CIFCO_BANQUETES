@@ -1,0 +1,11 @@
+{
+    "name": "Alimentacion",
+    "alias": "alimentacion",
+    "description": "",
+    "keywords": [],
+    "priority": 0,
+    "providers": [
+        "Modules\\Alimentacion\\Providers\\AlimentacionServiceProvider"
+    ],
+    "files": []
+}
