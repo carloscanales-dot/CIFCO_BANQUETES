@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('tickets', function (Blueprint $table) {
-            $table->id('ticket_id');
+            $table->id();
             $table->string('uuid', 125)->unique(); // UUID del ticket
             $table->unsignedTinyInteger('status')->default(1); // Estado del ticket
             $table->foreignId('product_id')->constrained('products')->onUpdate('cascade'); // Producto canjeado

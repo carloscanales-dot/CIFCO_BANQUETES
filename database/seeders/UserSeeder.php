@@ -20,7 +20,10 @@ class UserSeeder extends Seeder
         User::create([
             'name' => 'Carlos Canales',
             'email' => 'carlos.canales@cifco.gob.sv',
-            'password' => Hash::make('12345678')
+            'password' => Hash::make('12345678'),
+            'role' => 'Administrador',
+            'id_rol' => 1,
+            'status' => true,
         ]);
     }
 }

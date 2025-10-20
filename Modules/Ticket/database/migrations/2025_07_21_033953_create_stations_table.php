@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('stations', function (Blueprint $table) {
-            $table->id('station_id');
+            $table->id();
             $table->string('station_name', 100); // Nombre de la estación
             $table->boolean('status')->default(false); // Estado de la estación
             $table->foreignId('location_id')->constrained('location')->onUpdate('cascade'); // Ubicación asignada

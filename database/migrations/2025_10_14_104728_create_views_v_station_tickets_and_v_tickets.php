@@ -34,16 +34,15 @@ return new class extends Migration
         DB::statement("
             CREATE VIEW v_tickets AS
             SELECT 
-                tc.ticket_id AS ticket_id,
+                tc.id AS ticket_id,
                 tc.product_id AS product_id,
-                tc.user_id AS user_id,
                 pr.product_name AS product_name,
                 tc.uuid AS uuid,
                 pr.unit_price AS unit_price,
                 tc.status AS status,
                 tc.created_at AS created_at
             FROM tickets tc
-            JOIN products pr ON tc.product_id = pr.product_id
+            JOIN products pr ON tc.product_id = pr.id
         ");
     }
 

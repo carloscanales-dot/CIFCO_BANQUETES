@@ -11,10 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('location', function (Blueprint $table) {
-            $table->id('location_id');
-            $table->string('location_name', 65);
-            $table->foreignId('fair_id')->constrained('fairs')->onUpdate('cascade');
+        Schema::create('fairs', function (Blueprint $table) {
+            $table->id();
+            $table->string('fair_name', 65);
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->boolean('status')->default(false); // Más eficiente que integer si solo usas pocos estados
             $table->timestamps();
         });
     }
@@ -24,6 +26,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('location');
+        Schema::dropIfExists('fairs');
     }
 };
