@@ -17,13 +17,13 @@ class UserSeeder extends Seeder
         if (User::count() > 0) {
             return;
         }
-        User::create([
+        $user = User::create([
             'name' => 'Carlos Canales',
             'email' => 'carlos.canales@cifco.gob.sv',
             'password' => Hash::make('12345678'),
-            'role' => 'Administrador',
-            'id_rol' => 1,
             'status' => true,
         ]);
+
+        $user->assignRole('Administrador');
     }
 }

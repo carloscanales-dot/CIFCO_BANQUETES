@@ -51,4 +51,12 @@
 import { usePage, Link, Head } from '@inertiajs/vue3'
 
 const page = usePage()
+
+// Mostrar info del usuario y roles en la consola
+console.log('Usuario actual:', page.props.auth.user)
+
+// Si desde Laravel estás pasando roles en el array de usuario, por ejemplo:
+// 'roles' => $user->getRoleNames()
+// entonces los verás así:
+console.log('Roles del usuario:', page.props.auth.user.roles)
 </script>

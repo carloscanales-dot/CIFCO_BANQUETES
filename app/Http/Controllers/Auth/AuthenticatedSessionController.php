@@ -28,28 +28,17 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): Response
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        $user = Auth::user();
-
-        switch ($user->role) {
-            case 'Administrador':
-            case 'Empleado':
-                $redirectTo = RouteServiceProvider::HOME; // normalmente '/dashboard'
-                break;
-            case 'Lector':
-                $redirectTo = '/ticket/reader/index'; // ruta para lector QR
-                break;
-            default:
-                $redirectTo = RouteServiceProvider::HOME;
-                break;
-        }
-
-        return redirect()->intended($redirectTo);
+        return Inertia::render('Landing', [
+            'auth' => [
+                'user' => Auth::user(),
+            ],
+        ]);
     }
 
 

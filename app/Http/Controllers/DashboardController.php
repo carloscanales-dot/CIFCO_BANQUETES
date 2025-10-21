@@ -19,7 +19,6 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard');
     }
 
-    // Renderiza la vista de landing
     public function landing()
     {
         return Inertia::render('Landing');

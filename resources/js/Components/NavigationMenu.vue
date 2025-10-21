@@ -7,8 +7,8 @@ const page = usePage()
 const user = page.props.auth?.user
 
 // ⛑️ Validación segura
-const filteredItems = user
-  ? navigation.items.filter(item => item.roles?.includes(user.role))
+const filteredItems = user && user.roles
+  ? navigation.items.filter(item => item.roles?.some(role => user.roles.includes(role)))
   : []
 </script>
 
