@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('account', function (Blueprint $table) {
             $table->id('account_id');
-            $table->foreignId('employee_id')->constrained('employee')->onUpdate('cascade');
+            $table->foreignId('employee_id')->constrained(table: 'employee', column: 'employee_id')->onUpdate('cascade');
             $table->decimal('account_balance', 10, 2)->default(0);
             $table->boolean('status')->default(false);
             $table->dateTime('opening_date')->useCurrent()->nullable(true);

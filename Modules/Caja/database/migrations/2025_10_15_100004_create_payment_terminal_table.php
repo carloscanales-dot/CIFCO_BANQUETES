@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payment_terminal', function (Blueprint $table) {
-            $table->id('payment_terminal_id'); // Id de terminal de pago
+            $table->id(); // Id de terminal de pago
             $table->string('terminal_name', 65); // Nombre del terminal de pago
             $table->boolean('status')->default(false); // Estado del terminal de pago
             $table->foreignId('station_id')->constrained('stations')->onUpdate('cascade'); // Estación asociada

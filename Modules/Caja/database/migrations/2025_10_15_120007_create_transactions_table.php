@@ -12,20 +12,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('transactions', function (Blueprint $table) {
-            $table->id('transaction_id');
+            $table->id();
             $table->foreignId('station_id')->constrained('stations')->onUpdate('cascade');
             $table->foreignId('user_id')->constrained('users')->onUpdate('cascade');
             $table->decimal('amount', 10, 2);
             $table->dateTime('transaction_date')->useCurrent();
-            $table->foreignId('transaction_type_id')->constrained('transaction_type')->onUpdate('cascade');
-            $table->foreignId('status_id')->constrained('status')->onUpdate('cascade');
-            $table->foreignId('payment_method_id')->constrained('payment_method')->onUpdate('cascade');
+            $table->foreignId('transaction_type_id')->constrained(table: 'transaction_type', column: 'transaction_type_id')->onUpdate('cascade');
+            $table->foreignId('status_id')->constrained(table: 'status', column: 'status_id')->onUpdate('cascade');
+            $table->foreignId('payment_method_id')->constrained(table: 'payment_method', column: 'payment_method_id')->onUpdate('cascade');
             $table->foreignId('payment_terminal_opening_id')->constrained('payment_terminal_opening')->onUpdate('cascade');
             $table->boolean('is_refunded')->default(false);
-            $table->unsignedInteger('employee_id')->default(0);
+            $table->foreignId('employee_id')->constrained(table: 'employee', column: 'employee_id')->onUpdate('cascade');
             $table->timestamps();
-
-            $table->foreign('employee_id')->references('employee_id')->on('employee')->onUpdate('cascade');
         });
     }
 

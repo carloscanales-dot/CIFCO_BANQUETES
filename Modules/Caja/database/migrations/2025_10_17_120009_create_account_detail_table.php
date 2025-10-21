@@ -12,8 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('account_detail', function (Blueprint $table) {
-            $table->foreignId('account_id')->constrained('account')->onUpdate('cascade');
-            $table->foreignId('product_id')->constrained('products')->onUpdate('cascade');
+            $table->foreignId('account_id')->constrained(table:'account', column:'account_id')->onUpdate('cascade');
+            $table->foreignId('product_id')->constrained('products')->onUpdate('cascade'); // This was already corrected from the previous interaction
             $table->foreignId('transaction_id')->constrained('transactions')->onUpdate('cascade');
             $table->unsignedInteger('quantity');
             $table->date('transaction_date');
