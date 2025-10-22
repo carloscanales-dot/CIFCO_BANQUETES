@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('location', function (Blueprint $table) {
             $table->id();
             $table->string('location_name', 65);
-            $table->foreignId('fair_id')->constrained('fairs')->onUpdate('cascade');
             $table->timestamps();
         });
     }
