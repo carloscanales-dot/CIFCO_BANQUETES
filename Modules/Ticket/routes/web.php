@@ -9,7 +9,7 @@ use Modules\Ticket\Http\Controllers\ReaderController;
 use Modules\Ticket\Http\Controllers\StationProductController;
 use Modules\Ticket\Http\Controllers\StationUserController;
 use Modules\Ticket\Http\Controllers\StationTicketController;
-
+use Modules\Ticket\Http\Controllers\LocationController;
 // Prefijo 'ticket' y autenticación
 Route::middleware(['auth'])->prefix('ticket')->group(function () {
 
@@ -26,6 +26,12 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
         // Route::resource('/stationUser', StationUserController::class)->except(['show']);
         // Route::resource('/stationProduct', StationProductController::class)->except(['show']);
         Route::resource('/stationTicket', StationTicketController::class)->only(['index']);
+
+          // Locations
+        Route::get('/location/list/{fair}', [LocationController::class, 'list'])->name('location.list'); // Obtener locations por feria
+        Route::post('/location/store', [LocationController::class, 'store'])->name('location.store');      // Crear location
+        Route::delete('/location/{location}', [LocationController::class, 'destroy'])->name('location.destroy'); // Eliminar location
+
 
         // Rutas de listas
         Route::get('/station/list/{status}', [StationController::class, 'list'])->name('station.list');

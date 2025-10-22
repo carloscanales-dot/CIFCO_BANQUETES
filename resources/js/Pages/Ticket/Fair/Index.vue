@@ -10,6 +10,13 @@ import { storeToRefs } from 'pinia'
 const search = ref(null)
 const deleteId = ref(null)
 const deleteDialog = ref(false)
+// justo después de tus imports y refs
+const statusText = {
+  1: 'Programada',
+  2: 'Abierta',
+  3: 'Cerrada'
+}
+
 const helpers = inject('helpers')
 const fairStore = useFairStore()
 const { items, totalItems, isLoading } = storeToRefs(fairStore)
@@ -60,7 +67,7 @@ const applyFilter = () => {
           <VCol cols="12" md="6" sm="12">
             <VTextField v-model="filterForm.fair_name" label="Nombre de la feria" hide-details clearable></VTextField>
           </VCol>
-          <VCol cols="12" md="6" sm="12">
+          <VCol cols="12" md="3" sm="12">
             <VSelect
               v-model="filterForm.status"
               label="Estatus"
@@ -90,13 +97,19 @@ const applyFilter = () => {
               :loading="isLoading"
               @update:options="loadItems"
             >
+              <!-- Columna Status: muestra texto en vez de número -->
+              <template #[`item.status`]="{ item }">
+                <span>{{ statusText[item.status] || '' }}</span>
+              </template>
+
+              <!-- Columna Acción -->
               <template #[`item.action`]="{ item }">
-                <Link :href="`/ticket/fair/${item.fair_id}/edit`" as="button">
+                <Link :href="`/ticket/fair/${item.id}/edit`" as="button">
                   <VIcon color="warning" icon="mdi-pencil" />
                 </Link>
-                <VIcon class="ml-2" color="error" icon="mdi-delete" @click="deleteItem(item)" />
               </template>
             </VDataTableServer>
+
           </VCol>
         </VRow>
       </VCardText>

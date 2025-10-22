@@ -11,7 +11,7 @@ const fairStore = useFairStore()
 const { form, errors, isLoading } = storeToRefs(fairStore)
 
 const submit = () => {
-  fairStore.update(page.props.fair.fair_id)
+  fairStore.update(page.props.fair.id)
 }
 
 onMounted(() => {
@@ -35,9 +35,9 @@ onMounted(() => {
             </VCol>
             <VCol cols="12" md="6" sm="12">
               <VRadioGroup v-model="form.status" label="Estatus" :error-messages="errors.status" inline>
-                <VRadio value="Programada" label="Programada"></VRadio>
-                <VRadio value="Abierta" label="Abierta"></VRadio>
-                <VRadio value="Cerrada" label="Cerrada"></VRadio>
+                <VRadio :value="1" label="Programada"></VRadio>
+                <VRadio :value="2" label="Abierta"></VRadio>
+                <VRadio :value="3" label="Cerrada"></VRadio>
               </VRadioGroup>
             </VCol>
           </VRow>
@@ -69,7 +69,7 @@ onMounted(() => {
             variant="tonal"
             color="primary"
           ></VBtn>
-          <Link href="/ticket/fair" as="div">
+          <Link href="/ticket/fair" as="div" @click="fairStore.resetForm()">
             <VBtn prepend-icon="mdi-cancel" text="Cancelar" variant="tonal"></VBtn>
           </Link>
         </VCardActions>

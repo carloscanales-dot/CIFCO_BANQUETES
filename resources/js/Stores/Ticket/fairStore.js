@@ -9,24 +9,23 @@ const api_url = '/ticket/fair'
 export const useFairStore = defineStore('fairStore', () => {
   const items = ref([])
   const fairs = ref([])
-  const errors = ref([])
+  const errors = ref({})
   const totalItems = ref(0)
   const isLoading = ref(false)
 
   const form = useForm({
-    fair_name: null,
-    start_date: null,
-    end_date: null,
-    status: null,
+    fair_name: '',
+    start_date: '',
+    end_date: '',
+    status: 1, // por defecto "Programada"
   })
 
   const redirect = () => {
-    window.location.href = `${api_url}`
+    router.visit(api_url)
   }
 
   const index = (filters) => {
     isLoading.value = true
-
     router.get(`${api_url}`, filters, {
       preserveState: true,
       preserveScroll: true,
@@ -35,12 +34,24 @@ export const useFairStore = defineStore('fairStore', () => {
         items.value = data
         totalItems.value = total
       },
+      onError: (error) => (errors.value = error),
+      onFinish: () => (isLoading.value = false),
+    })
+  }
+
+  const store = () => {
+    isLoading.value = true
+    router.post(`${api_url}`, form.data(), {
+      preserveState: true,
+      onSuccess: () => {
+        form.reset()
+        redirect()
+      },
       onError: (error) => {
         errors.value = error
+        toast.error('❌ Verifica los campos del formulario')
       },
-      onFinish: () => {
-        isLoading.value = false
-      },
+      onFinish: () => (isLoading.value = false),
     })
   }
 
@@ -53,75 +64,34 @@ export const useFairStore = defineStore('fairStore', () => {
     }
   }
 
-  const store = () => {
-    isLoading.value = true
-
-    router.post(`${api_url}`, form.data(), {
-      preserveState: true,
-      onSuccess: () => {
-        redirect()
-      },
-      onError: (error) => {
-        errors.value = error
-      },
-      onFinish: () => {
-        isLoading.value = false
-      },
-    })
-  }
-
-  const ajaxStore = async () => {
-    isLoading.value = true
-
-    try {
-      const response = await window.axios.post(`${api_url}`, form.data())
-      const { message, fund } = response.data
-      fairs.value.push(fund)
-      toast.success(message)
-    } catch (ex) {
-      if (ex.response) {
-        errors.value = ex.response.data.errors
-        throw ex
-      }
-    } finally {
-      isLoading.value = false
-    }
-
-  }
-
   const update = (id) => {
     isLoading.value = true
-
     form.patch(`${api_url}/${id}`, {
       preserveState: true,
       onSuccess: () => {
         form.reset()
         redirect()
       },
-      onError: (err) => {
-        errors.value = err
-      },
-      onFinish: () => {
-        isLoading.value = false
-      }
+      onError: (err) => (errors.value = err),
+      onFinish: () => (isLoading.value = false),
     })
   }
 
   const destroy = (id) => {
     isLoading.value = true
-
     router.delete(`${api_url}/${id}`, {
-      onSuccess: () => {
-        redirect()
-      },
-      onError: (error) => {
-        errors.value = error
-      },
-      onFinish: () => {
-        isLoading.value = false
-      }
+      onSuccess: () => redirect(),
+      onError: (error) => (errors.value = error),
+      onFinish: () => (isLoading.value = false),
     })
   }
+
+  // fairStore.js
+  const resetForm = () => {
+    form.reset() // useForm de Inertia tiene reset()
+    errors.value = []
+  }
+
 
   return {
     items,
@@ -133,8 +103,8 @@ export const useFairStore = defineStore('fairStore', () => {
     index,
     store,
     ajaxList,
-    ajaxStore,
     update,
     destroy,
+    resetForm,
   }
 })
