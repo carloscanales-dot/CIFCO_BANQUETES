@@ -37,7 +37,7 @@ class FairController extends Controller
         });
 
         $result = $query
-            ->select('fair_id', 'fair_name', 'start_date', 'end_date', 'status')
+            ->select('id', 'fair_name', 'start_date', 'end_date', 'status')
             ->paginate($request->get('limit', 10));
 
         if ($request->expectsJson()) {
@@ -60,7 +60,7 @@ class FairController extends Controller
                     $query->where('status', true);
                 }
             })
-            ->select('fair_id', 'fair_name')
+            ->select('id', 'fair_name')
             ->orderBy('fair_name', 'asc')
             ->get();
 
@@ -132,19 +132,18 @@ class FairController extends Controller
 
     protected function setDataStore($request)
     {
-        $user = Auth::user();
-        $current_date = $this->getCurrentDate()->format('Y-m-d H.i:s');
+        $current_date = $this->getCurrentDate()->format('Y-m-d H:i:s');
 
         return [
             'fair_name' => $request->get('fair_name'),
             'start_date' => $request->get('start_date'),
             'end_date' => $request->get('end_date'),
-            'status' => $request->get('status'),
-            'user_id' => $user->user_id,
+            'status' => (int) $request->get('status'), // enviar siempre número
             'created_at' => $current_date,
             'updated_at' => $current_date
         ];
     }
+
 
     protected function getCurrentDate()
     {
