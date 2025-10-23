@@ -17,6 +17,11 @@ class LocationController extends Controller
         return response()->json(['locations' => $locations]);
     }
 
+    public function listAll()
+    {
+        return response()->json(['locations' => Location::all()]);
+    }
+
     /**
      * Guardar una nueva location asociada a una feria.
      */

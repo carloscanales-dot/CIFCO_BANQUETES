@@ -15,46 +15,36 @@ const fairStore = useFairStore()
 const { form: fairForm, errors: fairErrors, isLoading: fairLoading } = storeToRefs(fairStore)
 
 const locationStore = useLocationStore()
-const { locations, form: locationForm, errors: locationErrors } = storeToRefs(locationStore)
+const { locations } = storeToRefs(locationStore)
 
 const stationStore = useStationStore()
 const { stations, form: stationForm, errors: stationErrors } = storeToRefs(stationStore)
 
-const locationHeaders = [
-  { title: 'ID', key: 'id' },
-  { title: 'Nombre', key: 'location_name' },
-  { title: 'Acciones', key: 'action', sortable: false }
-]
-
 const stationHeaders = [
     { title: 'ID', key: 'id' },
     { title: 'Nombre', key: 'station_name' },
+    { title: 'Ubicación', key: 'location.location_name' },
     { title: 'Estado', key: 'status' },
     { title: 'Acciones', key: 'action', sortable: false }
 ]
 
 // Tabs
 const tab = ref('fair')
-const selectedLocationId = ref(null)
-
 // Submit functions
 const submitFair = () => {
   page.props.fair ? fairStore.update(page.props.fair.id) : fairStore.store()
 }
 
-const submitLocation = () => {
-  locationStore.store(fairForm.id) // Asociar a la feria actual
-}
-
 const submitStation = () => {
-  stationStore.store(selectedLocationId.value) // Asociar a la ubicación seleccionada
+  stationStore.store(fairForm.value.id)
 }
 
 // Cargar datos al editar
 onMounted(() => {
+  locationStore.loadAll()
   if (page.props.fair) {
     Object.assign(fairForm.value, page.props.fair)
-    locationStore.load(fairForm.value.id)
+    stationStore.load(fairForm.value.id)
   }
 })
 </script>
@@ -73,7 +63,6 @@ onMounted(() => {
       <!-- Tabs -->
       <v-tabs v-model="tab" color="primary">
         <v-tab value="fair">Feria</v-tab>
-        <v-tab value="locations">Ubicaciones</v-tab>
         <v-tab value="stations">Estaciones</v-tab>
       </v-tabs>
 
@@ -117,53 +106,32 @@ onMounted(() => {
           </v-sheet>
         </v-window-item>
 
-        <!-- TAB UBICACIONES -->
-        <v-window-item value="locations">
-          <v-sheet class="pa-4">
-            <v-form @submit.prevent="submitLocation">
-              <v-row>
-                <v-col cols="12" md="6">
-                  <v-text-field v-model="locationForm.location_name" label="Nombre ubicación" :error-messages="locationErrors.location_name"/>
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-btn type="submit" color="primary">Agregar Ubicación</v-btn>
-                </v-col>
-              </v-row>
-            </v-form>
-
-            <v-data-table :items="locations" :headers="locationHeaders">
-              <template #[`item.action`]="{ item }">
-                <v-btn small color="error" @click="locationStore.destroy(item.id)">Eliminar</v-btn>
-              </template>
-            </v-data-table>
-          </v-sheet>
-        </v-window-item>
-
         <!-- TAB ESTACIONES -->
         <v-window-item value="stations">
           <v-sheet class="pa-4">
-            <v-select
-              v-model="selectedLocationId"
-              :items="locations"
-              item-title="location_name"
-              item-value="id"
-              label="Selecciona ubicación"
-              clearable
-            />
-
             <v-form @submit.prevent="submitStation">
               <v-row>
-                <v-col cols="12" md="6">
+                <v-col cols="12" md="5">
                   <v-text-field v-model="stationForm.station_name" label="Nombre estación" :error-messages="stationErrors.station_name"/>
                 </v-col>
-                <v-col cols="12" md="6">
+                <v-col cols="12" md="5">
+                  <v-select
+                    v-model="stationForm.location_id"
+                    :items="locations"
+                    item-title="location_name"
+                    item-value="id"
+                    label="Selecciona ubicación"
+                    :error-messages="stationErrors.location_id"
+                  />
+                </v-col>
+                <v-col cols="12" md="2">
                   <v-btn type="submit" color="primary">Agregar Estación</v-btn>
                 </v-col>
               </v-row>
             </v-form>
 
             <v-data-table
-              :items="stations.filter(s => s.location_id === selectedLocationId)"
+              :items="stations"
               :headers="stationHeaders"
             >
               <template #[`item.action`]="{ item }">

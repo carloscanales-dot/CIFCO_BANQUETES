@@ -19,6 +19,15 @@ export const useLocationStore = defineStore('locationStore', () => {
     }
   }
 
+  const loadAll = async () => {
+    try {
+        const { data } = await axios.get('/ticket/location/list-all');
+        locations.value = data.locations;
+    } catch (error) {
+        console.error(error);
+    }
+  };
+
   // Guardar location
   const store = async (fairId) => {
     locationErrors.value = {}
@@ -57,6 +66,7 @@ export const useLocationStore = defineStore('locationStore', () => {
     locationForm,
     locationErrors,
     load,
+    loadAll,
     store,
     destroy,
     resetForm

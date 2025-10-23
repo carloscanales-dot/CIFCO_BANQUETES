@@ -67,6 +67,12 @@ class StationController extends Controller
         return response()->json(['stations' => $stations]);
     }
 
+    public function listByFair($fairId)
+    {
+        $stations = Station::with('location')->where('fair_id', $fairId)->get();
+        return response()->json(['stations' => $stations]);
+    }
+
     /**
      * Show the form for creating a new resource.
      */

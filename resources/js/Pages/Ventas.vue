@@ -64,13 +64,21 @@ import { useCartStore } from '@/Stores/cart'
 import { logoBitmap } from '../logoBitmap.js'
 
 const products = ref([
-    { product_id: 1, product_name: 'Elotes Locos', unit_price: 1.50, icon: 'mdi-food' },
-    { product_id: 2, product_name: 'Churros Españoles', unit_price: 2.00, icon: 'mdi-food' },
-    { product_id: 3, product_name: 'Papitas', unit_price: 1.00, icon: 'mdi-food' },
-    { product_id: 4, product_name: 'Refresco de Cola', unit_price: 1.25, icon: 'mdi-beer-outline' },
-    { product_id: 5, product_name: 'Agua', unit_price: 1.00, icon: 'mdi-beer-outline' },
+    { product_id: 1, product_name: 'Minestrone', unit_price: 2.00, icon: 'mdi-food' },
+    { product_id: 2, product_name: 'Spaghetti a la Carbonara', unit_price: 2.00, icon: 'mdi-food' },
+    { product_id: 3, product_name: 'Porcion Pizza Suprema', unit_price: 2.00, icon: 'mdi-food' },
+    { product_id: 4, product_name: 'Porcion Pizza Pepperoni', unit_price: 2.00, icon: 'mdi-food' },
+    { product_id: 5, product_name: 'Gnochi a la sorrentina', unit_price: 2.50, icon: 'mdi-food' },
+    { product_id: 6, product_name: 'Canelones', unit_price: 2.50, icon: 'mdi-food' },
+    { product_id: 7, product_name: 'Bruschetta capresa', unit_price: 1.50, icon: 'mdi-food' },
+    { product_id: 8, product_name: 'Tiramisu', unit_price: 2.75, icon: 'mdi-food' },
+    { product_id: 9, product_name: 'Canoli de ricotta', unit_price: 2.00, icon: 'mdi-food' },
+    { product_id: 10, product_name: 'Soda de lata', unit_price: 1.00, icon: 'mdi-beer-outline' },
+    { product_id: 11, product_name: 'Soda de botella', unit_price: 0.35, icon: 'mdi-beer-outline' },
 ])
 const cart = useCartStore()
+const pedidoCounter = ref(1);
+
 
 let epos = null;
 let printer = null;
@@ -98,61 +106,120 @@ const printReceipt = () => {
         return;
     }
 
-    const width = 512;
-    const height = 288;
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    const imageData = ctx.createImageData(width, height);
+    const printOnce = () => {
+        const width = 512; // 80 mm
+        const height = 288;
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.createImageData(width, height);
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const byteIndex = Math.floor(x / 8) + y * Math.ceil(width / 8);
-            const bit = 7 - (x % 8);
-            const isBlack = (logoBitmap[byteIndex] >> bit) & 1;
-            const idx = (y * width + x) * 4;
-            imageData.data[idx] = imageData.data[idx+1] = imageData.data[idx+2] = isBlack ? 0 : 255;
-            imageData.data[idx+3] = 255;
+        // === Render del logo ===
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const byteIndex = Math.floor(x / 8) + y * Math.ceil(width / 8);
+                const bit = 7 - (x % 8);
+                const isBlack = (logoBitmap[byteIndex] >> bit) & 1;
+                const idx = (y * width + x) * 4;
+                imageData.data[idx] = imageData.data[idx + 1] = imageData.data[idx + 2] = isBlack ? 0 : 255;
+                imageData.data[idx + 3] = 255;
+            }
         }
-    }
-    ctx.putImageData(imageData, 0, 0);
+        ctx.putImageData(imageData, 0, 0);
 
-    printer.addImage(ctx, 0, 0, width, height, printer.COLOR_1, printer.MODE_MONO);
+        // === Encabezado centrado ===
+        printer.addTextAlign(printer.ALIGN_CENTER);
+        printer.addImage(ctx, 0, 0, width, height, printer.COLOR_1, printer.MODE_MONO);
+        printer.addFeedLine(1);
 
-    printer.addFeedLine(1);
-    printer.addText("GAMER CIFCO 2\n");
-    printer.addText("https://cifco.gob.sv/\n");
-    printer.addText("-----------------------------\n");
+        printer.addTextStyle(false, false, true, printer.COLOR_1);
+        printer.addText("COMIDA ITALIANA\n");
+        printer.addTextStyle(false, false, false, printer.COLOR_1);
+        printer.addText("https://cifco.gob.sv/\n");
+        printer.addText("-----------------------------\n");
 
-    printer.addTextAlign(printer.ALIGN_LEFT);
-    printer.addText(`PEDIDO N.º ${Math.floor(Math.random() * 1000)}\n`);
-    printer.addText(`${new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}\n`);
-    printer.addText("USUARIO: Pruebas\n");
-    printer.addText("-----------------------------\n");
+        // === Fecha y hora ===
+        const now = new Date();
+        const fecha = now.toLocaleDateString('es-ES', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        const hora = now.toLocaleTimeString('es-ES', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
 
-    printer.addText("CANT   ARTÍCULO                PRECIO\n");
-    cart.cartItems.forEach(item => {
-        const price = (item.unit_price * item.quantity).toFixed(2);
-        const name = item.product_name.padEnd(23, ' ');
-        const quantity = item.quantity.toString().padStart(2, ' ');
-        printer.addText(`${quantity}   ${name}${price}\n`);
-    });
-    printer.addText("-----------------------------\n");
+        printer.addText(`PEDIDO N.º ${pedidoCounter.value}\n`);
+        printer.addText(`${fecha} - ${hora}\n`);
+        printer.addText("USUARIO: Alejandra Portillo\n");
+        printer.addText("-----------------------------\n");
 
-    printer.addText(`Recuento de artículos: ${cart.itemCount}\n`);
-    printer.addText(`TOTAL: ${cart.cartTotal.toFixed(2)}\n`);
-    printer.addText("-----------------------------\n");
+        // === Tabla de productos centrada ===
+        printer.addTextAlign(printer.ALIGN_CENTER);
+        printer.addText("<DETALLE DE PRODUCTOS>\n");
 
-    printer.addTextAlign(printer.ALIGN_CENTER);
-    printer.addText("GRACIAS\n");
+        printer.addTextAlign(printer.ALIGN_LEFT);
+        printer.addText("CANT  ARTÍCULO                          PRECIO\n");
 
-    printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
+        cart.cartItems.forEach(item => {
+            const name = item.product_name.trim();
+            const price = `$${(item.unit_price * item.quantity).toFixed(2)}`;
+            const quantity = item.quantity.toString();
 
-    printer.addFeedLine(3);
-    printer.addCut(printer.CUT_FEED);
+            const maxLength = 26;
+            const lines = [];
+            for (let i = 0; i < name.length; i += maxLength) {
+                lines.push(name.slice(i, i + maxLength));
+            }
+
+            const firstLine = `${quantity.padEnd(5)}${lines[0].padEnd(30)}${price}\n`;
+
+            printer.addTextAlign(printer.ALIGN_CENTER);
+            printer.addText(firstLine);
+
+            for (let i = 1; i < lines.length; i++) {
+                printer.addTextAlign(printer.ALIGN_CENTER);
+                printer.addText(`     ${lines[i]}\n`);
+            }
+        });
+
+        printer.addTextAlign(printer.ALIGN_CENTER);
+        printer.addText("-----------------------------\n");
+
+        // === Totales centrados ===
+        printer.addText(`Subtotal: $${cart.cartTotal.toFixed(2)}\n`);
+        printer.addTextStyle(false, false, true, printer.COLOR_1);
+        printer.addText(`TOTAL: $${cart.cartTotal.toFixed(2)}\n`);
+        printer.addTextStyle(false, false, false, printer.COLOR_1);
+        printer.addText("-----------------------------\n");
+
+        printer.addText("¡GRACIAS POR SU COMPRA!\n");
+        printer.addFeedLine(1);
+
+        // === Código de barras centrado ===
+        printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
+
+        printer.addFeedLine(3);
+        printer.addCut(printer.CUT_FEED);
+    };
+
+    // === Imprimir dos copias ===
+    printOnce();
+    printOnce();
 
     printer.send();
     cart.clearCart();
-}
+    pedidoCounter.value++;
+};
+
+
+
+
+
+
 </script>

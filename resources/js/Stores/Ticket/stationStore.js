@@ -44,6 +44,16 @@ export const useStationStore = defineStore('stationStore', () => {
     })
   }
 
+  const load = async (fairId) => {
+    if (!fairId) return;
+    try {
+        const response = await window.axios.get(`${api_url}/list-by-fair/${fairId}`);
+        stations.value = response.data.stations;
+    } catch (ex) {
+        toast.error(ex.message);
+    }
+  };
+
   const ajaxList = async (status) => {
     try {
       const response = await window.axios.get(`${api_url}/list/${status}`)
@@ -53,21 +63,30 @@ export const useStationStore = defineStore('stationStore', () => {
     }
   }
 
-  const store = () => {
-    isLoading.value = true
+  const store = (fairId) => {
+    if (!fairId) {
+        toast.error('ID de la feria es requerido.');
+        return;
+    }
+    isLoading.value = true;
 
-    router.post(`${api_url}`, form.data(), {
-      preserveState: true,
-      onSuccess: () => {
-        redirect()
-      },
-      onError: (error) => {
-        errors.value = error
-      },
-      onFinish: () => {
-        isLoading.value = false
-      },
-    })
+    form.transform(data => ({
+        ...data,
+        fair_id: fairId
+    })).post(`${api_url}`, {
+        preserveState: true,
+        onSuccess: () => {
+            toast.success('Estación creada exitosamente.');
+            router.reload({ only: ['stations'] });
+            form.reset('station_name', 'location_id');
+        },
+        onError: (error) => {
+            errors.value = error;
+        },
+        onFinish: () => {
+            isLoading.value = false;
+        },
+    });
   }
 
   const ajaxStore = async () => {
@@ -131,6 +150,7 @@ export const useStationStore = defineStore('stationStore', () => {
     totalItems,
     isLoading,
     index,
+    load,
     store,
     ajaxList,
     ajaxStore,

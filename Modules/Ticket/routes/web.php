@@ -29,12 +29,14 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
 
           // Locations
         Route::get('/location/list/{fair}', [LocationController::class, 'list'])->name('location.list'); // Obtener locations por feria
+        Route::get('/location/list-all', [LocationController::class, 'listAll'])->name('location.listAll'); // Obtener todas las locations
         Route::post('/location/store', [LocationController::class, 'store'])->name('location.store');      // Crear location
         Route::delete('/location/{location}', [LocationController::class, 'destroy'])->name('location.destroy'); // Eliminar location
 
 
         // Rutas de listas
         Route::get('/station/list/{status}', [StationController::class, 'list'])->name('station.list');
+        Route::get('/station/list-by-fair/{fair}', [StationController::class, 'listByFair'])->name('station.listByFair');
         Route::get('/product/list/{status}', [ProductController::class, 'list'])->name('product.list');
 
         // Exportar tickets de estación
