@@ -20,10 +20,6 @@ export const useFairStore = defineStore('fairStore', () => {
     status: 1, // por defecto "Programada"
   })
 
-  const redirect = () => {
-    router.visit(api_url)
-  }
-
   const index = (filters) => {
     isLoading.value = true
     router.get(`${api_url}`, filters, {
@@ -41,11 +37,12 @@ export const useFairStore = defineStore('fairStore', () => {
 
   const store = () => {
     isLoading.value = true
+    // Se asume que el backend redirigirá a la página de edición después de crear.
+    // Inertia seguirá esa redirección automáticamente.
     router.post(`${api_url}`, form.data(), {
-      preserveState: true,
       onSuccess: () => {
         form.reset()
-        redirect()
+        toast.success('Feria creada. Ahora puede agregar estaciones.')
       },
       onError: (error) => {
         errors.value = error
@@ -70,7 +67,7 @@ export const useFairStore = defineStore('fairStore', () => {
       preserveState: true,
       onSuccess: () => {
         form.reset()
-        redirect()
+        router.visit(api_url) // Redirigir al index después de actualizar
       },
       onError: (err) => (errors.value = err),
       onFinish: () => (isLoading.value = false),
@@ -80,7 +77,7 @@ export const useFairStore = defineStore('fairStore', () => {
   const destroy = (id) => {
     isLoading.value = true
     router.delete(`${api_url}/${id}`, {
-      onSuccess: () => redirect(),
+      onSuccess: () => router.visit(api_url), // Redirigir al index después de eliminar
       onError: (error) => (errors.value = error),
       onFinish: () => (isLoading.value = false),
     })

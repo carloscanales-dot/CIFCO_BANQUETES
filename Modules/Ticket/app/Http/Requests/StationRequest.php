@@ -22,7 +22,9 @@ class StationRequest extends FormRequest
     {
         return [
             'station_name' => 'required',
-            'status' => 'required'
+            'status' => 'required',
+            'fair_id' => 'required|exists:fairs,id',
+            'location_id' => 'required|exists:location,id',
         ];
     }
 

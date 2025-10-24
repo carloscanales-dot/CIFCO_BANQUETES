@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Station extends Model
 {
     protected $table = 'stations';
-    protected $primaryKey = 'station_id';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
         'station_name',
@@ -44,7 +44,7 @@ class Station extends Model
      */
     public function users(): HasMany
     {
-        return $this->hasMany(\App\Models\User::class, 'station_id', 'station_id');
+        return $this->hasMany(\App\Models\User::class, 'station_id', 'id');
     }
 
     public function products(): BelongsToMany

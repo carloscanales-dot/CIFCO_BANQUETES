@@ -15,7 +15,8 @@ export const useStationStore = defineStore('stationStore', () => {
 
   const form = useForm({
     station_name: null,
-    status: null,
+    status: 1, // Default status
+    location_id: null,
     product_ids: [],
     user_ids: null,
   })

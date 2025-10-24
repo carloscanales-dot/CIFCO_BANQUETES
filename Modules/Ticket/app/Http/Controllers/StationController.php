@@ -37,7 +37,7 @@ class StationController extends Controller
         });
 
         $result = $query
-            ->select('station_id', 'station_name', 'status')
+            ->select('id', 'station_name', 'status')
             ->paginate($request->get('limit', 10));
 
         if ($request->expectsJson()) {
@@ -60,7 +60,7 @@ class StationController extends Controller
                     $query->where('status', 'Activa');
                 }
             })
-            ->select('station_id', 'station_name')
+            ->select('id', 'station_name')
             ->orderBy('station_name', 'asc')
             ->get();
 
@@ -165,7 +165,8 @@ class StationController extends Controller
         return [
             'station_name' => $request->get('station_name'),
             'status' => $request->get('status'),
-            'user_id' => $user->user_id,
+            'fair_id' => $request->get('fair_id'),
+            'location_id' => $request->get('location_id'),
             'created_at' => $current_date,
             'updated_at' => $current_date
         ];
