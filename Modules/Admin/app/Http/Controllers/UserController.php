@@ -10,7 +10,7 @@ class UserController extends Controller
     public function list()
     {
         $users = DB::table('users')
-            ->select('user_id', 'name')
+            ->select('id', 'name')
             ->get();
 
         return response()->json(['users' => $users]);

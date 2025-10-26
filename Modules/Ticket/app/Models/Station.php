@@ -5,6 +5,7 @@ namespace Modules\Ticket\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Station extends Model
@@ -28,8 +29,9 @@ class Station extends Model
      */
     public function location(): BelongsTo
     {
-        return $this->belongsTo(Location::class, 'location_id', 'location_id');
+        return $this->belongsTo(Location::class, 'location_id', 'id');
     }
+
 
     /**
      * Relación: una estación pertenece a una feria.
@@ -42,10 +44,11 @@ class Station extends Model
     /**
      * Relación: una estación puede tener varios usuarios asignados (si se activa en el futuro).
      */
-    public function users(): HasMany
+    public function users()
     {
-        return $this->hasMany(\App\Models\User::class, 'station_id', 'id');
+        return $this->belongsToMany(User::class, 'station_user', 'station_id', 'user_id');
     }
+
 
     public function products(): BelongsToMany
     {
