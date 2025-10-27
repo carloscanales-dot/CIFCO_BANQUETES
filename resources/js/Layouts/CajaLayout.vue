@@ -1,5 +1,6 @@
 <script setup>
 import CifcoLogo from '@/Components/CifcoLogo.vue' // Importá el logo
+import { Link } from '@inertiajs/vue3'
 </script>
 
 <template>
@@ -9,7 +10,7 @@ import CifcoLogo from '@/Components/CifcoLogo.vue' // Importá el logo
         <v-list-item :title="$page.props.auth.user.name" :subtitle="$page.props.auth.user.email">
           <!-- Logo en lugar del avatar -->
           <template #prepend>
-            <CifcoLogo style="height: 42px; width: 42px; margin-right: 5px;" />
+            <CifcoLogo style="height: 42px; width: 42px; margin-right: 5px; margin-left: -8px;" />
           </template>
         </v-list-item>
       </v-list>
@@ -25,6 +26,12 @@ import CifcoLogo from '@/Components/CifcoLogo.vue' // Importá el logo
       <v-app-bar-nav-icon v-if="$vuetify.display.mobile" @click.stop="drawer = !drawer" />
       <v-app-bar-nav-icon v-else @click.stop="rail = !rail" />
       <v-toolbar-title text="Módulo de Caja" />
+        <Link href="/landing" class="text-decoration-none">
+        <v-btn color="white" variant="text">
+          <v-icon start icon="mdi-arrow-left"></v-icon>
+          Regresar
+        </v-btn>
+      </Link>
     </v-app-bar>
 
     <v-main>

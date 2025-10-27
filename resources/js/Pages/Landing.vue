@@ -9,8 +9,11 @@
             </Link>
         </v-app-bar>
 
-        <v-main style="background-image: url('/fondo-lr.jpeg'); background-size: cover;">
-            <v-container class="d-flex justify-center align-center fill-height">
+        <v-main :style="mainStyle">
+            <v-container v-if="imageLoading" class="d-flex justify-center align-center fill-height">
+                <v-progress-circular indeterminate color="white" size="64"></v-progress-circular>
+            </v-container>
+            <v-container v-else class="d-flex justify-center align-center fill-height">
                 <v-row justify="center">
                     <v-col cols="12" sm="6" md="4">
                         <v-card href="/dashboard" class="mx-auto text-center" width="250" height="250" style="background-color: rgba(255, 255, 255, 0.9);" rounded="lg">
@@ -23,7 +26,7 @@
                     </v-col>
 
                     <v-col cols="12" sm="6" md="4">
-<v-card href="/ventas" class="mx-auto text-center" width="250" height="250" style="background-color: rgba(255, 255, 255, 0.9);" rounded="lg">
+                        <v-card href="/ventas" class="mx-auto text-center" width="250" height="250" style="background-color: rgba(255, 255, 255, 0.9);" rounded="lg">
                             <v-card-text class="d-flex flex-column align-center justify-center fill-height">
                                 <v-icon size="64" class="mb-4">mdi-point-of-sale</v-icon>
                                 <div class="text-h6">Ventas</div>
@@ -49,8 +52,30 @@
 
 <script setup>
 import { usePage, Link, Head } from '@inertiajs/vue3'
+import { ref, onMounted, computed } from 'vue'
 
 const page = usePage()
+
+// Image loading logic
+const imageLoading = ref(true)
+onMounted(() => {
+  const img = new Image();
+  img.src = '/fondo-lr.jpeg';
+  img.onload = () => {
+    imageLoading.value = false;
+  };
+  // Optional: add an onerror handler
+  img.onerror = () => {
+    imageLoading.value = false; // Or handle the error differently
+  }
+})
+
+const mainStyle = computed(() => ({
+  backgroundColor: '#303a44',
+  backgroundImage: !imageLoading.value ? `url('/fondo-lr.jpeg')` : 'none',
+  backgroundSize: 'cover'
+}))
+
 
 // Mostrar info del usuario y roles en la consola
 console.log('Usuario actual:', page.props.auth.user)
