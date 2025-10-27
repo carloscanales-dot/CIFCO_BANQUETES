@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Location extends Model
 {
     protected $table = 'location';
-    protected $primaryKey = 'location_id';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
         'location_name',
@@ -25,6 +25,6 @@ class Location extends Model
 
     public function stations(): HasMany
     {
-        return $this->hasMany(Station::class, 'location_id', 'location_id');
+        return $this->hasMany(Station::class, 'location_id', 'id');
     }
 }
