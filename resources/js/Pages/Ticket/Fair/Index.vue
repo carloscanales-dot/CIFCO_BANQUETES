@@ -2,10 +2,10 @@
 import { reactive, ref, inject } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import DeleteDialog from '@/Components/DeleteDialog.vue'
 import { useFairStore } from '@/Stores/Ticket/fairStore'
 import { storeToRefs } from 'pinia'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 const search = ref(null)
 const deleteId = ref(null)
@@ -56,7 +56,7 @@ const applyFilter = () => {
 </script>
 <template>
   <Head title="Feria" />
-  <AuthenticatedLayout>
+  <AdminLayout>
     <div class="mb-3">
       <h5 class="text-h5 font-weight-bold">Consulta de ferias</h5>
       <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
@@ -120,7 +120,7 @@ const applyFilter = () => {
       @close-delete-dialog="deleteDialog = false"
       @delete-item="submitDelete"
     ></DeleteDialog>
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
 <script>
 export default {

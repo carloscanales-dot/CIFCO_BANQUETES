@@ -20,9 +20,6 @@ class Station extends Model
         'fair_id',
     ];
 
-    protected $casts = [
-        'status' => 'boolean',
-    ];
 
     /**
      * Relación: una estación pertenece a una ubicación.
@@ -38,7 +35,7 @@ class Station extends Model
      */
     public function fair(): BelongsTo
     {
-        return $this->belongsTo(Fair::class, 'fair_id', 'fair_id');
+        return $this->belongsTo(Fair::class, 'fair_id', 'id');
     }
 
     /**

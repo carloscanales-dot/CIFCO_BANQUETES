@@ -28,7 +28,7 @@ Route::get('/', function () {
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
 Route::get('/landing', [DashboardController::class, 'landing'])->middleware(['auth', 'verified'])->name('landing');
-
+Route::get('/Administrar', [DashboardController::class, 'administrar'])->middleware(['auth', 'verified'])->name('administrar');
 Route::get('/dashboard/charts', [DashboardController::class, 'charts']);
 Route::get('/ventas', [DashboardController::class, 'ventas'])->name('ventas');
 Route::get('/creditos', [DashboardController::class, 'creditos'])->name('creditos');

@@ -2,10 +2,10 @@
 import { reactive, ref, inject } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import DeleteDialog from '@/Components/DeleteDialog.vue'
 import { useProductStore } from '@/Stores/Ticket/productStore'
 import { storeToRefs } from 'pinia'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 const search = ref(null)
 const deleteId = ref(null)
@@ -50,7 +50,7 @@ const applyFilter = () => {
 </script>
 <template>
   <Head title="Productos" />
-  <AuthenticatedLayout>
+  <AdminLayout>
     <div class="mb-3">
       <h5 class="text-h5 font-weight-bold">Consulta de productos</h5>
       <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
@@ -96,13 +96,25 @@ const applyFilter = () => {
               :loading="isLoading"
               @update:options="loadItems"
             >
+              <!-- Columna Estatus -->
+              <template #[`item.status`]="{ item }">
+                <VChip
+                  :color="item.status ? 'green' : 'red'"
+                  variant="tonal"
+                  size="small"
+                >
+                  {{ item.status ? 'Activo' : 'Inactivo' }}
+                </VChip>
+              </template>
+
+              <!-- Columna Acción -->
               <template #[`item.action`]="{ item }">
-                <Link :href="`/ticket/product/${item.product_id}/edit`" as="button">
+                <Link :href="`/ticket/product/${item.id}/edit`" as="button">
                   <VIcon color="warning" icon="mdi-pencil" />
                 </Link>
-                <VIcon class="ml-2" color="error" icon="mdi-delete" @click="deleteItem(item)" />
               </template>
             </VDataTableServer>
+
           </VCol>
         </VRow>
       </VCardText>
@@ -113,7 +125,7 @@ const applyFilter = () => {
       @close-delete-dialog="deleteDialog = false"
       @delete-item="submitDelete"
     ></DeleteDialog>
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
 <script>
 export default {
@@ -123,6 +135,7 @@ export default {
         { title: 'Nombre del producto', key: 'product_name' },
         { title: 'Prefijo del producto', key: 'prefix' },
         { title: 'Precio unitario', key: 'unit_price' },
+        { title: 'Costo unitario', key: 'cost' },
         { title: 'Estatus', key: 'status' },
         { title: 'Acción', key: 'action', sortable: false },
       ],

@@ -2,11 +2,11 @@
 import { onMounted } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { useStationStore } from '@/Stores/Ticket/stationStore'
 import { useProductStore } from '@/Stores/Ticket/productStore'
 import { useUserStore } from '@/Stores/Admin/User/userStore'
 import { storeToRefs } from 'pinia'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 const stationStore = useStationStore()
 const productStore = useProductStore()
@@ -27,7 +27,7 @@ onMounted(() => {
 
 <template>
   <Head title="Estaciones de servicio" />
-  <AuthenticatedLayout>
+  <AdminLayout>
     <div class="mb-3">
       <h5 class="text-h5 font-weight-bold">Consulta de estaciones de servicio</h5>
       <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
@@ -89,7 +89,7 @@ onMounted(() => {
         </VCardActions>
       </VForm>
     </VCard>
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
 <script>
 export default {

@@ -2,11 +2,11 @@
 import { ref, onMounted } from 'vue'
 import { Head, Link, usePage } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { useFairStore } from '@/Stores/Ticket/fairStore'
 import { useLocationStore } from '@/Stores/Ticket/locationStore'
 import { useStationStore } from '@/Stores/Ticket/stationStore'
 import { storeToRefs } from 'pinia'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 const page = usePage()
 
@@ -51,7 +51,7 @@ onMounted(() => {
 
 <template>
   <Head title="Ferias" />
-  <AuthenticatedLayout>
+  <AdminLayout>
     <div class="mb-3">
       <h5 class="text-h5 font-weight-bold">
         {{ page.props.fair ? 'Actualizar feria' : 'Nueva feria' }}
@@ -142,7 +142,7 @@ onMounted(() => {
         </v-window-item>
       </v-window>
     </v-sheet>
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
 
 <script>

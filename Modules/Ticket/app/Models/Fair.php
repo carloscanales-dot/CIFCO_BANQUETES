@@ -20,4 +20,8 @@ class Fair extends Model
     {
         return $this->hasMany(Location::class, 'fair_id');
     }
+        public function stations()
+    {
+        return $this->hasMany(Station::class, 'fair_id');
+    }
 }

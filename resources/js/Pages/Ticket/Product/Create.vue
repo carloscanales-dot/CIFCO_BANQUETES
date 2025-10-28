@@ -33,17 +33,24 @@ const submit = () => {
             </VCol>
           </VRow>
           <VRow>
-            <VCol cols="12" md="6" sm="12">
+            <VCol cols="12" md="3" sm="12">
               <VTextField
                 v-model="form.unit_price"
                 label="Precio unitario"
                 :error-messages="errors.unit_price"
               ></VTextField>
             </VCol>
+            <VCol cols="12" md="3" sm="12">
+              <VTextField
+                v-model="form.cost"
+                label="Costo unitario"
+                :error-messages="errors.cost"
+              ></VTextField>
+            </VCol>
             <VCol cols="12" md="6" sm="12">
               <VRadioGroup v-model="form.status" label="Estatus" :error-messages="errors.status" inline>
-                <VRadio value="Activo" label="Activo"></VRadio>
-                <VRadio value="Inactivo" label="Inactivo"></VRadio>
+                <VRadio value="1" label="Activo"></VRadio>
+                <VRadio value="2" label="Inactivo"></VRadio>
               </VRadioGroup>
             </VCol>
           </VRow>
@@ -51,7 +58,7 @@ const submit = () => {
         <VCardActions>
           <VBtn
             prepend-icon="mdi-plus"
-            :disabled="loading"
+            :disabled="isLoading"
             type="submit"
             text="Guardar"
             variant="tonal"

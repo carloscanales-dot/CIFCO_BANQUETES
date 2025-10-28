@@ -36,7 +36,7 @@ class ProductController extends Controller
         });
 
         $result = $query
-            ->select('product_id', 'prefix', 'product_name', 'unit_price', 'status')
+            ->select('id', 'prefix', 'product_name', 'unit_price', 'cost', 'status')
             ->paginate($request->get('limit', 10));
 
         if ($request->expectsJson()) {
@@ -137,6 +137,7 @@ class ProductController extends Controller
             'prefix' => strtoupper($request->get('prefix')),
             'product_name' => $request->get('product_name'),
             'unit_price' => $request->get('unit_price'),
+            'cost' => $request->get('cost', 0),
             'status' => $request->get('status'),
             'created_at' => $current_date,
             'updated_at' => $current_date

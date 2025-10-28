@@ -22,23 +22,32 @@ class StationController extends Controller
      */
     public function index(Request $request)
     {
-        $query = DB::table('stations')->when($request->get('search'), function ($query, $search) {
+        $query = Station::with(['fair', 'location']);
+
+        $query->when($request->get('search'), function ($query, $search) {
             return $query->where(function ($query) use ($search) {
                 foreach ($search as $field => $value) {
                     $filter = $this->setField($field);
-
                     if (!is_null($filter) && !is_null($value)) {
                         $this->setFilter($query, $filter['operator'], $filter['field'], $value);
                     }
                 }
             });
-        })->when($request->get('sort'), function ($query, $sortBy) {
-            return $query->orderBy($sortBy['key'], $sortBy['order']);
         });
 
-        $result = $query
-            ->select('id', 'station_name', 'status')
-            ->paginate($request->get('limit', 10));
+        if ($sortBy = $request->get('sort')) {
+            $query->orderBy($sortBy['key'], $sortBy['order']);
+        }
+
+        $result = $query->paginate($request->get('limit', 10));
+
+        // 🔥 Agregamos los nombres de feria y ubicación al resultado
+        $result->getCollection()->transform(function ($station) {
+            $station->fair_name = $station->fair?->fair_name ?? '-';
+            $station->location_name = $station->location?->location_name ?? '-';
+             $station->status = $station->getOriginal('status') == 1 ? 'Activo' : 'Inactivo';
+            return $station;
+        });
 
         if ($request->expectsJson()) {
             return response()->json($result);
@@ -48,6 +57,7 @@ class StationController extends Controller
             'result' => $result
         ]);
     }
+
 
     /**
      * List categories load resource
@@ -95,20 +105,14 @@ class StationController extends Controller
             $station->products()->sync($request->input('product_ids'));
         }
 
-        if ($request->has('user_ids')) {
-            $station->users()->sync($request->input('user_ids'));
-        }
-
-        $message = sprintf('La estacion %s, ha sido ingresada exitosamente.', $station['station_name']);
-
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => $message,
+
                 'station' => $station
             ]);
         }
 
-        return redirect()->back()->with('success', $message);
+        return redirect()->back()->with('success');
     }
 
     /**

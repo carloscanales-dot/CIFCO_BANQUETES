@@ -2,26 +2,27 @@
 import { onMounted } from 'vue'
 import { Head, Link, usePage } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import { useProductStore } from '@/Stores/Ticket/productStore'
 import { storeToRefs } from 'pinia'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 const page = usePage()
 const productStore = useProductStore()
 const { form, errors, isLoading } = storeToRefs(productStore)
 
 const submit = () => {
-  productStore.update(page.props.product.product_id)
+  productStore.update(page.props.product.id)
 }
 
 onMounted(() => {
   Object.assign(productStore.form, page.props.product)
+  console.log(page.props.product)
 })
 </script>
 
 <template>
   <Head title="Producto" />
-  <AuthenticatedLayout>
+  <AdminLayout>
     <div class="mb-3">
       <h5 class="text-h5 font-weight-bold">Actualizacion del producto</h5>
       <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
@@ -45,10 +46,17 @@ onMounted(() => {
                 :error-messages="errors.unit_price"
               ></VTextField>
             </VCol>
+             <VCol cols="12" md="3" sm="12">
+              <VTextField
+                v-model="form.cost"
+                label="Costo unitario"
+                :error-messages="errors.cost"
+              ></VTextField>
+            </VCol>
             <VCol cols="12" md="6" sm="12">
               <VRadioGroup v-model="form.status" label="Estatus" :error-messages="errors.status" inline>
-                <VRadio value="Activo" label="Activo"></VRadio>
-                <VRadio value="Inactivo" label="Inactivo"></VRadio>
+                <VRadio :value="true" label="Activa"></VRadio>
+                <VRadio :value="false" label="Inactiva"></VRadio>
               </VRadioGroup>
             </VCol>
           </VRow>
@@ -68,7 +76,7 @@ onMounted(() => {
         </VCardActions>
       </VForm>
     </VCard>
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
 <script>
 export default {

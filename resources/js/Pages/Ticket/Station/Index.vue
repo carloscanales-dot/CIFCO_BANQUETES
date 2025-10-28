@@ -2,10 +2,10 @@
 import { reactive, ref, inject } from 'vue'
 import { Head, Link, router } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import DeleteDialog from '@/Components/DeleteDialog.vue'
 import { useStationStore } from '@/Stores/Ticket/stationStore'
 import { storeToRefs } from 'pinia'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 const search = ref(null)
 const deleteId = ref(null)
@@ -39,7 +39,7 @@ const loadItems = ({ page, itemsPerPage, sortBy }) => {
   }
 
   filters.search = helpers.removeEmptyAttribute(filterForm)
-
+  console.log(totalItems)
   stationStore.index(filters)
 }
 
@@ -49,7 +49,7 @@ const applyFilter = () => {
 </script>
 <template>
   <Head title="Estaciones de servicio" />
-  <AuthenticatedLayout>
+  <AdminLayout>
     <div class="mb-3">
       <h5 class="text-h5 font-weight-bold">Consulta de estaciones de servicio</h5>
       <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
@@ -74,10 +74,9 @@ const applyFilter = () => {
         </VRow>
         <VRow dense>
           <VCol cols="12" md="12" sm="12">
-            <VBtnToggle variant="tonal" divided>
+
               <VBtn prepend-icon="mdi-filter" text="Filtrar" color="primary" @click="applyFilter"></VBtn>
-              <VBtn prepend-icon="mdi-plus" text="Agregar" @click="router.visit('/ticket/station/create')"></VBtn>
-            </VBtnToggle>
+
           </VCol>
         </VRow>
         <VRow dense>
@@ -90,11 +89,10 @@ const applyFilter = () => {
               :loading="isLoading"
               @update:options="loadItems"
             >
-              <template #[`item.action`]="{ item }">
-                <Link :href="`/ticket/station/${item.station_id}/edit`" as="button">
-                  <VIcon color="warning" icon="mdi-pencil" />
+              <template #item.actions="{ item }">
+                <Link :href="`/ticket/station/${item.id}/edit`">
+                  <VIcon>mdi-pencil</VIcon>
                 </Link>
-                <VIcon class="ml-2" color="error" icon="mdi-delete" @click="deleteItem(item)" />
               </template>
             </VDataTableServer>
           </VCol>
@@ -107,7 +105,7 @@ const applyFilter = () => {
       @close-delete-dialog="deleteDialog = false"
       @delete-item="submitDelete"
     ></DeleteDialog>
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
 <script>
 export default {
@@ -116,7 +114,9 @@ export default {
       headers: [
         { title: 'Nombre de la estacion', key: 'station_name' },
         { title: 'Estatus', key: 'status' },
-        { title: 'Acción', key: 'action', sortable: false },
+        { title: 'Feria', key: 'fair.fair_name' },
+        { title: 'Ubicación', key: 'location.location_name' },
+        { title: 'Acciones', key: 'actions', sortable: false },
       ],
       breadcrumbs: [
         { title: 'Panel', disabled: false, href: '/dashboard' },
