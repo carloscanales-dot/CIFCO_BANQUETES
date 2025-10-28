@@ -33,6 +33,10 @@ class DashboardController extends Controller
     {
         return Inertia::render('Creditos');
     }
+    public function administrar()
+    {
+        return Inertia::render('Admin/Administrar');
+    }
 
     // Devuelve los datos para las gráficas
     public function charts()

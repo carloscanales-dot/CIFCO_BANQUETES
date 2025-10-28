@@ -1,5 +1,5 @@
 <script setup>
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
 import DashboardCharts from '@/Components/DashboardCharts.vue'
 import { Head } from '@inertiajs/vue3'
@@ -35,7 +35,7 @@ onMounted(async () => {
 
 <template>
   <Head title="Panel" />
-  <AuthenticatedLayout>
+  <AdminLayout>
     <div class="mb-5">
       <h5 class="text-h5 font-weight-bold">Panel de comando</h5>
       <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
@@ -58,5 +58,5 @@ onMounted(async () => {
         />
       </v-card-text>
     </v-card>
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
