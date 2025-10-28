@@ -44,7 +44,7 @@ class Station extends Model
     /**
      * Relación: una estación puede tener varios usuarios asignados (si se activa en el futuro).
      */
-    public function users()
+    public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'station_user', 'station_id', 'user_id');
     }

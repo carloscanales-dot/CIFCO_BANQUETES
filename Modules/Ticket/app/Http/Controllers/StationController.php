@@ -91,12 +91,12 @@ class StationController extends Controller
 
         $station = $this->getStationById($stationId);
 
-        if ($request->has('product_ids')) {
-            $station->products()->sync($request->input('product_ids'));
+        if ($request->has('product_id')) {
+            $station->products()->sync($request->input('product_id'));
         }
 
-        if ($request->has('user_ids')) {
-            $station->users()->sync($request->input('user_ids'));
+        if ($request->has('user_id')) {
+            $station->users()->sync($request->input('user_id'));
         }
 
         $message = sprintf('La estacion %s, ha sido ingresada exitosamente.', $station['station_name']);
@@ -147,9 +147,18 @@ class StationController extends Controller
      */
     public function destroy(Station $station)
     {
+        $stationName = $station->station_name;
         $station->delete();
 
-        return redirect()->back()->with('success', sprintf('Eliminado con éxito, la estacion %s', $station->station_name));
+        $message = sprintf('La estacion %s, ha sido eliminada exitosamente.', $stationName);
+
+        if (isset($request) && $request->expectsJson()) {
+            return response()->json([
+                'message' => $message,
+                'station' => $stationName
+            ]);
+        }
+        //return redirect()->back()->with('success', $message);  
     }
 
     private function getStationById($station_id)
@@ -164,7 +173,7 @@ class StationController extends Controller
 
         return [
             'station_name' => $request->get('station_name'),
-            'status' => $request->get('status'),
+            'status' => $request->get('status') === 'Activa' ? true : false,
             'fair_id' => $request->get('fair_id'),
             'location_id' => $request->get('location_id'),
             'created_at' => $current_date,
