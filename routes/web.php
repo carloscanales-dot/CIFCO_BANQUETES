@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,7 @@ Route::get('/Administrar', [DashboardController::class, 'administrar'])->middlew
 Route::get('/dashboard/charts', [DashboardController::class, 'charts']);
 Route::get('/ventas', [DashboardController::class, 'ventas'])->name('ventas');
 Route::get('/creditos', [DashboardController::class, 'creditos'])->name('creditos');
+Route::get('/admin/users', [UserManagementController::class, 'index'])->name('admin.users');
 
 
 require __DIR__ . '/auth.php';

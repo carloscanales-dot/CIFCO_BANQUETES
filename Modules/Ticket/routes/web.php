@@ -23,6 +23,7 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
         Route::resource('/fair', FairController::class)->except(['show']);
         Route::resource('/station', StationController::class)->except(['show']);
         Route::resource('/product', ProductController::class)->except(['show']);
+        Route::get('/product/all', [ProductController::class, 'all'])->name('product.all');
         // Route::resource('/stationUser', StationUserController::class)->except(['show']);
         // Route::resource('/stationProduct', StationProductController::class)->except(['show']);
         Route::resource('/stationTicket', StationTicketController::class)->only(['index']);
@@ -38,6 +39,13 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
         Route::get('/station/list/{status}', [StationController::class, 'list'])->name('station.list');
         Route::get('/station/list-by-fair/{fair}', [StationController::class, 'listByFair'])->name('station.listByFair');
         Route::get('/product/list/{status}', [ProductController::class, 'list'])->name('product.list');
+        // Asignar múltiples productos a una estación
+        // Asignar múltiples productos a una estación
+        Route::post('/station/{station}/products', [StationProductController::class, 'store'])
+            ->name('station.products.store');
+        Route::get('/station/{station}/products', [StationProductController::class, 'getProducts'])
+            ->name('station.products.get');
+
 
         // Exportar tickets de estación
         Route::get('/stationTicket/export', [StationTicketController::class, 'export'])->name('stationTicket.export');

@@ -149,6 +149,12 @@ class ProductController extends Controller
         return Carbon::now()->setTimezone(config('app.timezone'));
     }
 
+    public function all()
+    {
+        return response()->json(\Modules\Ticket\Models\Product::select('id', 'product_name')->where('status', 1)->get());
+    }
+
+
     /**
      * @param type $field
      * @return type
