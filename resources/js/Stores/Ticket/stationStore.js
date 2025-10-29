@@ -48,10 +48,10 @@ export const useStationStore = defineStore('stationStore', () => {
   const load = async (fairId) => {
     if (!fairId) return;
     try {
-        const response = await window.axios.get(`${api_url}/list-by-fair/${fairId}`);
-        stations.value = response.data.stations;
+      const response = await window.axios.get(`${api_url}/list-by-fair/${fairId}`);
+      stations.value = response.data.stations;
     } catch (ex) {
-        toast.error(ex.message);
+      toast.error(ex.message);
     }
   };
 
@@ -66,27 +66,27 @@ export const useStationStore = defineStore('stationStore', () => {
 
   const store = (fairId) => {
     if (!fairId) {
-        toast.error('ID de la feria es requerido.');
-        return;
+      toast.error('ID de la feria es requerido.');
+      return;
     }
     isLoading.value = true;
 
     form.transform(data => ({
-        ...data,
-        fair_id: fairId
+      ...data,
+      fair_id: fairId
     })).post(`${api_url}`, {
-        preserveState: true,
-        onSuccess: () => {
-            toast.success('Estación creada exitosamente.');
-            router.reload({ only: ['stations'] });
-            form.reset('station_name', 'location_id');
-        },
-        onError: (error) => {
-            errors.value = error;
-        },
-        onFinish: () => {
-            isLoading.value = false;
-        },
+      preserveState: true,
+      onSuccess: () => {
+        toast.success('Estación creada exitosamente.');
+        router.reload({ only: ['stations'] });
+        form.reset('station_name', 'location_id');
+      },
+      onError: (error) => {
+        errors.value = error;
+      },
+      onFinish: () => {
+        isLoading.value = false;
+      },
     });
   }
 
@@ -127,20 +127,21 @@ export const useStationStore = defineStore('stationStore', () => {
     })
   }
 
-  const destroy = (id) => {
+  const destroy = async (id) => {
     isLoading.value = true
+    try {
+      const response = await window.axios.delete(`${api_url}/${id}`)
+      toast.success(response.data.message)
 
-    router.delete(`${api_url}/${id}`, {
-      onSuccess: () => {
-        redirect()
-      },
-      onError: (error) => {
-        errors.value = error
-      },
-      onFinish: () => {
-        isLoading.value = false
-      }
-    })
+      // ✅ Eliminar visualmente de la lista reactiva sin recargar la página
+      stations.value = stations.value.filter(station => station.id !== id)
+
+    } catch (error) {
+      console.error(error)
+      toast.error('Error al eliminar la estación.')
+    } finally {
+      isLoading.value = false
+    }
   }
 
   return {

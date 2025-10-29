@@ -41,11 +41,10 @@ class StationController extends Controller
 
         $result = $query->paginate($request->get('limit', 10));
 
-        // 🔥 Agregamos los nombres de feria y ubicación al resultado
         $result->getCollection()->transform(function ($station) {
             $station->fair_name = $station->fair?->fair_name ?? '-';
             $station->location_name = $station->location?->location_name ?? '-';
-             $station->status = $station->getOriginal('status') == 1 ? 'Activo' : 'Inactivo';
+            $station->status = $station->getOriginal('status') == 1 ? 'Activo' : 'Inactivo';
             return $station;
         });
 
@@ -149,19 +148,14 @@ class StationController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Station $station)
+    public function destroy(Request $request, Station $station)
     {
         $stationName = $station->station_name;
         $station->delete();
 
-        $message = sprintf('La estacion %s, ha sido eliminada exitosamente.', $stationName);
-
-        if (isset($request) && $request->expectsJson()) {
-            return response()->json([
-                'message' => $message,
-                'station' => $stationName
-            ]);
-        }
+        return response()->json([
+            'message' => sprintf('La estación %s ha sido eliminada exitosamente.', $stationName),
+        ]);
         //return redirect()->back()->with('success', $message);  
     }
 
