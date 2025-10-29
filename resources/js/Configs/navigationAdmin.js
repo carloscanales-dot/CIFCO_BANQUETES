@@ -24,5 +24,11 @@ export default {
       to: '/ticket/station',
       roles: ['Administrador', 'Empleado'],
     },
+    {
+      title: 'Usuarios',
+      icon: 'mdi-account-multiple',
+      to: '/admin/users',
+      roles: ['Administrador'],
+    },
   ],
 }
