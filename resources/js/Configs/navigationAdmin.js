@@ -33,8 +33,14 @@ export default {
     {
       title: 'Usuarios',
       icon: 'mdi-account-multiple',
-      to: '/admin/users',
+      to: '/admin/users?page=1',
       roles: ['Administrador'],
     },
+    {
+      title: 'Cambiar Contraseña',
+      icon: 'mdi-lock-outline',
+      to: '/user/update-password',
+      roles: ['Administrador', 'Empleado'] // o los roles que quieras permitir
+    }
   ],
 }

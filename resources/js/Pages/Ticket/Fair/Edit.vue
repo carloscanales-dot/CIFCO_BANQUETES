@@ -80,16 +80,30 @@ onMounted(() => {
       <v-window v-model="tab" class="mt-4">
         <!-- TAB FERIA -->
         <v-window-item value="fair">
-          <v-sheet class="pa-4 rounded-lg" style="background-color: #f9f9f9; border: 1px solid #e0e0e0;">
+          <v-sheet class="pa-6 rounded-lg" style="background-color: #f9f9f9; border: 1px solid #e0e0e0;">
             <v-form @submit.prevent="submitFair">
-              <v-row class="g-4 align-center">
-                <v-col cols="12" md="6">
-                  <v-text-field v-model="fairForm.fair_name" label="Nombre de la feria" variant="outlined" color="black"
-                    base-color="black" bg-color="white" :error-messages="fairErrors.fair_name" />
+              <!-- Fila principal: campos + radio group -->
+              <v-row class="g-4 align-start">
+                <!-- Columna de campos -->
+                <v-col cols="12" md="9">
+                  <v-row class="g-4">
+                    <v-col cols="12">
+                      <v-text-field v-model="fairForm.fair_name" label="Nombre de la feria" variant="outlined"
+                        color="black" base-color="black" bg-color="white" :error-messages="fairErrors.fair_name" />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-text-field v-model="fairForm.start_date" type="date" label="Desde" variant="outlined"
+                        color="black" base-color="black" bg-color="white" :error-messages="fairErrors.start_date" />
+                    </v-col>
+                    <v-col cols="12" md="6">
+                      <v-text-field v-model="fairForm.end_date" type="date" label="Hasta" variant="outlined"
+                        color="black" base-color="black" bg-color="white" :error-messages="fairErrors.end_date" />
+                    </v-col>
+                  </v-row>
                 </v-col>
-
-                <v-col cols="12" md="6">
-                  <v-radio-group v-model="fairForm.status" label="Estatus" :error-messages="fairErrors.status" inline
+                <!-- Columna de radio buttons -->
+                <v-col cols="12" md="3" class="d-flex flex-column justify-center">
+                  <v-radio-group v-model="fairForm.status" label="Estatus" :error-messages="fairErrors.status"
                     color="black">
                     <v-radio :value="1" label="Programada" />
                     <v-radio :value="2" label="Abierta" />
@@ -97,34 +111,19 @@ onMounted(() => {
                   </v-radio-group>
                 </v-col>
               </v-row>
-
-              <v-row class="g-4">
-                <v-col cols="12" md="6">
-                  <v-text-field v-model="fairForm.start_date" type="date" label="Desde" variant="outlined" color="black"
-                    base-color="black" bg-color="white" :error-messages="fairErrors.start_date" />
-                </v-col>
-                <v-col cols="12" md="6">
-                  <v-text-field v-model="fairForm.end_date" type="date" label="Hasta" variant="outlined" color="black"
-                    base-color="black" bg-color="white" :error-messages="fairErrors.end_date" />
-                </v-col>
-              </v-row>
-
-              <v-row class="mt-4">
-                <v-col cols="12" class="d-flex gap-3 justify-space-between">
-                  <v-btn type="submit" :disabled="fairLoading" style="background-color: #000; color: #fff;"
-                    class="px-6 text-none rounded-md" elevation="2">
-                    Guardar Feria
-                  </v-btn>
-
-                  <Link href="/ticket/fair" as="div">
-                  <v-btn variant="outlined" style="border-color: #000; color: #000;" class="px-6 text-none rounded-md">
-                    Cancelar
-                  </v-btn>
-                  </Link>
-                </v-col>
-              </v-row>
             </v-form>
           </v-sheet>
+          <v-col cols="12" class="d-flex gap-3 justify-space-between">
+            <v-btn type="submit" :disabled="fairLoading" color="black" class="px-6 text-none rounded-md"
+              variant="elevated">
+              Guardar Feria
+            </v-btn>
+            <Link href="/ticket/fair" as="div">
+            <v-btn variant="elevated" color="red" class="px-6 text-none rounded-md">
+              Cancelar
+            </v-btn>
+            </Link>
+          </v-col>
         </v-window-item>
 
         <!-- TAB ESTACIONES -->
@@ -132,27 +131,19 @@ onMounted(() => {
           <v-sheet class="pa-4 rounded-lg" style="background-color: #f9f9f9; border: 1px solid #e0e0e0;">
             <!-- Formulario estaciones -->
             <v-form @submit.prevent="submitStation">
-              <v-row class="g-4 align-center ">
-                <v-col cols="12" md="6">
+              <v-row class="g-4 align-center flex-wrap justify-end">
+                <v-col cols="12" md="12">
                   <v-text-field v-model="stationForm.station_name" label="Nombre estación" variant="solo" color="black"
                     base-color="black" bg-color="white" :error-messages="stationErrors.station_name" />
-                </v-col>
-
-                <v-col cols="12" md="6">
                   <v-select v-model="stationForm.location_id" :items="locations" item-title="location_name"
                     item-value="id" label="Selecciona ubicación" variant="solo" color="black" base-color="black"
                     bg-color="white" :error-messages="stationErrors.location_id" />
-                </v-col>
-              </v-row>
-              <v-row class="mt-4 justify-end">
-                <v-col cols="12" md="3" class="d-flex">
                   <v-btn type="submit" style="background-color: #000; color: #fff;" class="px-6 text-none rounded-md">
                     Agregar Estación
                   </v-btn>
                 </v-col>
               </v-row>
             </v-form>
-
             <!-- Tabla estaciones -->
             <v-data-table :items="stations" :headers="stationHeaders" class="mt-6 rounded-md" density="comfortable"
               style="border: 1px solid #e0e0e0; background-color: #fff; color: #000;">
