@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Admin\UserManagementController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -11,29 +11,62 @@ use Inertia\Inertia;
 | Web Routes
 |--------------------------------------------------------------------------
 |
-| Here is where you can register web routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| contains the "web" middleware group. Now create something great!
+| Aquí se registran las rutas de la aplicación. Todas las rutas dentro del
+| grupo con middleware 'auth' requieren autenticación de usuario.
 |
 */
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
+        'canLogin'       => Route::has('login'),
+        'canRegister'    => Route::has('register'),
         'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
+        'phpVersion'     => PHP_VERSION,
     ]);
 });
 
+// 📊 Dashboard principal
 Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-Route::get('/landing', [DashboardController::class, 'landing'])->middleware(['auth', 'verified'])->name('landing');
-Route::get('/Administrar', [DashboardController::class, 'administrar'])->middleware(['auth', 'verified'])->name('administrar');
+// 🌐 Página de inicio interna (solo usuarios verificados)
+Route::get('/landing', [DashboardController::class, 'landing'])
+    ->middleware(['auth', 'verified'])
+    ->name('landing');
+
+// 📦 CRUD de usuarios (sin create/edit/show/destroy ya que son manejados por Inertia)
+Route::resource('users', UserManagementController::class)
+    ->except(['create', 'edit', 'show', 'destroy']);
+
+// 📈 Otras vistas
+Route::get('/Administrar', [DashboardController::class, 'administrar'])
+    ->middleware(['auth', 'verified'])
+    ->name('administrar');
+
 Route::get('/dashboard/charts', [DashboardController::class, 'charts']);
 Route::get('/ventas', [DashboardController::class, 'ventas'])->name('ventas');
 Route::get('/creditos', [DashboardController::class, 'creditos'])->name('creditos');
-Route::get('/admin/users', [UserManagementController::class, 'index'])->name('admin.users');
 
+// 🛡️ Grupo de rutas protegidas (solo usuarios autenticados y verificados)
+Route::middleware(['auth', 'verified'])->group(function () {
+
+    // 👥 Administración de usuarios
+    Route::get('/admin/users', [UserManagementController::class, 'index'])->name('admin.users');
+    Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
+    Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+
+    // 🔄 Reset de contraseña (administrador resetea a otro usuario)
+    Route::post('/users/{user}/reset-password', [UserManagementController::class, 'resetPassword'])
+        ->name('users.reset-password');
+
+    // 🔐 Cambio de contraseña personal (por el usuario autenticado)
+    // Vista del formulario de cambio de contraseña
+    Route::get('/user/update-password', function () {
+        return Inertia::render('Profile/UpdatePassword'); // 👈 Página Inertia que mostrarás
+    })->name('user.update-password.form');
+
+    // Acción que guarda la nueva contraseña
+    Route::post('/user/update-password', [UserManagementController::class, 'updatePassword'])
+        ->name('user.update-password');
+});
 
 require __DIR__ . '/auth.php';
