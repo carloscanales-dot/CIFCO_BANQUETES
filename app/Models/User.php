@@ -8,6 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use Modules\Ticket\Models\Station;
 
 class User extends Authenticatable
 {
@@ -50,4 +51,14 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function stations()
+    {
+        return $this->belongsToMany(
+            Station::class,      // Modelo destino
+            'station_users',     // Tabla pivote
+            'user_id',           // FK en la tabla pivote para User
+            'station_id'         // FK en la tabla pivote para Station
+        )->withTimestamps();
+    }
 }

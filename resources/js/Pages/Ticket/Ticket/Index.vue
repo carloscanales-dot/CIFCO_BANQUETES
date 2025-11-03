@@ -9,6 +9,7 @@ import { useTicketStore } from '@/Stores/Ticket/ticketStore'
 import { useProductStore } from '@/Stores/Ticket/productStore'
 import GenTicketDialog from '@/Components/Ticket/GenTicketDialog.vue'
 import { filterItems } from 'vuetify/lib/composables/filter'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 const search = ref(null)
 const deleteId = ref(null)
@@ -68,7 +69,7 @@ onMounted(() => {
 </script>
 <template>
   <Head title="Ticket" />
-  <AuthenticatedLayout>
+  <AdminLayout>
     <div class="mb-3">
       <h5 class="text-h5 font-weight-bold">Consulta de tickets</h5>
       <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
@@ -153,7 +154,7 @@ onMounted(() => {
       @delete-item="submitDelete"
     ></DeleteDialog>
     <GenTicketDialog v-model="generateDialog" @result="genSubmit"></GenTicketDialog>
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
 <script>
 export default {

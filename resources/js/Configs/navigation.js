@@ -1,12 +1,6 @@
 export default {
   items: [
     {
-      title: 'Tickets',
-      icon: 'mdi-ticket-confirmation',
-      to: '/ticket/ticket',
-      roles: ['Administrador'],
-    },
-    {
       title: 'Lector QR',
       icon: 'mdi-qrcode-scan',
       to: '/ticket/reader/index',

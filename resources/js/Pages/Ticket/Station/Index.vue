@@ -7,11 +7,13 @@ import { useStationStore } from '@/Stores/Ticket/stationStore'
 import { storeToRefs } from 'pinia'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import StationProductDialog from '@/Components/Ticket/StationProductDialog.vue'
+import StationUserDialog from '@/Components/Ticket/StationUserDialog.vue'
 
 const search = ref(null)
 const deleteId = ref(null)
 const deleteDialog = ref(false)
 const productDialog = ref(false)
+const userDialog = ref(false)
 const selectedStation = ref(null)
 
 const helpers = inject('helpers')
@@ -22,6 +24,12 @@ const filterForm = reactive({
   station_name: null,
   status: null,
 })
+
+const openUserDialog = (station) => {
+  selectedStation.value = station
+  userDialog.value = true
+}
+
 
 const headers = [
   { title: 'Nombre de la estación', key: 'station_name' },
@@ -116,10 +124,14 @@ const applyFilter = () => {
               @update:options="loadItems"
             >
               <template #item.actions="{ item }">
-                <VBtn color="success" @click="openProductDialog(item)">
-                  PRODUCTO
-                </VBtn>
-              </template>
+              <VBtn color="success" class="mr-2" @click="openProductDialog(item)">
+                PRODUCTO
+              </VBtn>
+
+              <VBtn color="info" class="mr-2" @click="openUserDialog(item)">
+                USUARIOS
+              </VBtn>
+            </template>
             </VDataTableServer>
           </VCol>
         </VRow>
@@ -135,6 +147,10 @@ const applyFilter = () => {
 
     <StationProductDialog
       v-model="productDialog"
+      :station="selectedStation"
+    />
+    <StationUserDialog
+      v-model="userDialog"
       :station="selectedStation"
     />
   </AdminLayout>
