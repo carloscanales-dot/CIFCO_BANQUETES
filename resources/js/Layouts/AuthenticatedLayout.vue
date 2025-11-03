@@ -20,22 +20,9 @@ import { Link } from '@inertiajs/vue3'
           </template>
         </v-list-item>
       </v-list>
-
       <v-divider />
-
       <!-- Menú principal -->
       <NavigationMenu />
-
-      <!-- Acceso fijo al cambio de contraseña -->
-      <v-divider class="mt-2" />
-      <v-list density="compact" class="mt-auto mb-2">
-        <v-list-item
-          prepend-icon="mdi-lock-outline"
-          title="Cambiar Contraseña"
-          @click="$inertia.visit('/user/update-password')"
-          class="hover:bg-black/5 rounded-lg"
-        />
-      </v-list>
     </v-navigation-drawer>
 
     <!-- Barra superior -->

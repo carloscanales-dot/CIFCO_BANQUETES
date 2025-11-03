@@ -19,11 +19,6 @@ const filteredItems = user && user.roles
       :class="{ 'v-list-item--active': $page.url.startsWith(item.to) }" />
     </Link>
 
-    <!-- 🔹 Agregado manualmente -->
-    <Link href="/user/update-password" as="div">
-    <v-list-item prepend-icon="mdi-lock-outline" title="Cambiar Contraseña" link />
-    </Link>
-
     <Link href="/logout" method="post" as="div">
     <v-list-item prepend-icon="mdi-exit-to-app" title="Log Out" link />
     </Link>
