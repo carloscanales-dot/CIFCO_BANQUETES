@@ -82,24 +82,22 @@ class FairController extends Controller
     {
         $fair = $this->setDataStore($request);
         $fairId = DB::table('fairs')->insertGetId($fair);
-
-        $message = sprintf('La feria %s, ha sido ingresada exitosamente.', $fair['fair_name']);
-
+        $message = sprintf('La feria %s ha sido ingresada exitosamente.', $fair['fair_name']);
         if ($request->expectsJson()) {
             if ($fairId) {
                 $newFair = (object) $fair;
                 $newFair->fair_id = $fairId;
             }
-
             return response()->json([
                 'message' => $message,
-                'fair' => $newFair
+                'fair' => $newFair ?? null,
             ]);
         }
-
-        return redirect()->back()->with('success', $message);
+        // Redirigir directamente a la vista de edición
+        return redirect()->route('fair.edit', $fairId)
+            ->with('fair', (object) array_merge($fair, ['fair_id' => $fairId]))
+            ->with('success', $message);
     }
-
     /**
      * Show the form for editing the specified resource.
      */

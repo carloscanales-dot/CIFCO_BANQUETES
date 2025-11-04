@@ -12,11 +12,5 @@ export default {
       to: '/ticket/stationTicket',
       roles: ['Administrador', 'Empleado'],
     },
-    {
-      title: 'Cambiar Contraseña',
-      icon: 'mdi-lock-outline',
-      to: '/user/update-password',
-      roles: ['Administrador', 'Empleado'] // o los roles que quieras permitir
-    },
   ],
 }

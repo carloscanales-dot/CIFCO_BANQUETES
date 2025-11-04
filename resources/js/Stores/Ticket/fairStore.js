@@ -37,20 +37,27 @@ export const useFairStore = defineStore('fairStore', () => {
 
   const store = () => {
     isLoading.value = true
-    // Se asume que el backend redirigirá a la página de edición después de crear.
-    // Inertia seguirá esa redirección automáticamente.
+
     router.post(`${api_url}`, form.data(), {
-      onSuccess: () => {
-        form.reset()
-        toast.success('Feria creada. Ahora puede agregar estaciones.')
+      onSuccess: (page) => {
+        const fair = page.props.flash?.fair || null
+
+        if (fair?.fair_id) {
+          router.visit(`/ticket/fair/${fair.fair_id}/edit`)
+        } else {
+          router.visit(api_url) // fallback si no devuelve el ID
+        }
+
+        toast.success(' Feria creada correctamente.')
       },
       onError: (error) => {
         errors.value = error
-        toast.error('❌ Verifica los campos del formulario')
+        toast.error(' Verifica los campos del formulario.')
       },
       onFinish: () => (isLoading.value = false),
     })
   }
+
 
   const ajaxList = async (status) => {
     try {

@@ -112,19 +112,19 @@ onMounted(() => {
                   </v-radio-group>
                 </v-col>
               </v-row>
+              <v-col cols="12" class="d-flex gap-3 justify-space-between">
+                <v-btn type="submit" :disabled="fairLoading" style="background-color: #000; color: #fff;"
+                  class="px-6 text-none rounded-md" variant="elevated">
+                  Guardar Feria
+                </v-btn>
+                <Link href="/ticket/fair" as="div">
+                <v-btn variant="elevated" color="red" class="px-6 text-none rounded-md">
+                  Cancelar
+                </v-btn>
+                </Link>
+              </v-col>
             </v-form>
           </v-sheet>
-          <v-col cols="12" class="d-flex gap-3 justify-space-between">
-            <v-btn type="submit" :disabled="fairLoading" style="background-color: #000; color: #fff;"
-              class="px-6 text-none rounded-md" variant="elevated">
-              Guardar Feria
-            </v-btn>
-            <Link href="/ticket/fair" as="div">
-            <v-btn variant="elevated" color="red" class="px-6 text-none rounded-md">
-              Cancelar
-            </v-btn>
-            </Link>
-          </v-col>
         </v-window-item>
         <!-- TAB ESTACIONES -->
         <v-window-item value="stations">
