@@ -14,15 +14,6 @@ class Location extends Model
         'location_name',
     ];
 
-    public function fair()
-    {
-        return $this->belongsTo(Fair::class, 'fair_id');
-    }
-
-    /**
-     * Relación: una ubicación puede tener muchas estaciones.
-     */
-
     public function stations(): HasMany
     {
         return $this->hasMany(Station::class, 'location_id', 'id');

@@ -12,7 +12,7 @@ export default {
       to: '/ticket/fair',
       roles: ['Administrador', 'Empleado'],
     },
-        {
+    {
       title: 'Productos',
       icon: 'mdi-package-variant',
       to: '/ticket/product',
@@ -24,7 +24,7 @@ export default {
       to: '/ticket/station',
       roles: ['Administrador', 'Empleado'],
     },
-        {
+    {
       title: 'Tickets',
       icon: 'mdi-ticket-confirmation',
       to: '/ticket/ticket',
@@ -46,7 +46,15 @@ export default {
       title: 'Impresoras',
       icon: 'mdi-printer-outline',
       to: '/admin/printers',
-      roles: ['Administrador'], 
+      roles: ['Administrador'],
     },
+    {
+      title: 'Locaciones',
+      icon: 'mdi-map-marker-outline',
+      to: '/ticket/location',
+      roles: ['Administrador'], // solo visible para administradores
+      exact: true,
+    }
+
   ],
 }
