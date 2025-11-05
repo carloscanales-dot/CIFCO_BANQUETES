@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Ticket extends Model
 {
     protected $table = 'tickets';
-    protected $primaryKey = 'ticket_id';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
         'uuid',
-        'status_id',
+        'status',
         'product_id',
         'redeem_date',
     ];
@@ -27,7 +27,7 @@ class Ticket extends Model
      */
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class, 'product_id', 'product_id');
+        return $this->belongsTo(Product::class);
     }
 
     /**

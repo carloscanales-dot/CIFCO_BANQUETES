@@ -62,6 +62,7 @@ export const useTicketStore = defineStore('ticketStore', () => {
 
   const ajaxStore = async () => {
     isLoading.value = true
+    errors.value = []
 
     try {
       const response = await window.axios.post(`${api_url}`, form.data())
@@ -70,10 +71,14 @@ export const useTicketStore = defineStore('ticketStore', () => {
       form.reset()
       toast.success(message)
     } catch (ex) {
-      if (ex.response) {
+      if (ex.response && ex.response.data && ex.response.data.errors) {
         errors.value = ex.response.data.errors
-        throw ex
+      } else if (ex.response && ex.response.data && ex.response.data.message) {
+        toast.error(ex.response.data.message)
+      } else {
+        toast.error('An unexpected error occurred.')
       }
+      throw ex
     } finally {
       isLoading.value = false
     }

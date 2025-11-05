@@ -109,7 +109,7 @@ const applyFilter = () => {
 
               <!-- Columna Acción -->
               <template #[`item.action`]="{ item }">
-                <Link :href="`/ticket/product/${item.id}/edit`" as="button">
+                <Link :href="`/ticket/product/${item.product_id}/edit`" as="button">
                   <VIcon color="warning" icon="mdi-pencil" />
                 </Link>
               </template>

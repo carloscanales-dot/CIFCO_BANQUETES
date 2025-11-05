@@ -38,7 +38,7 @@ export const useQrStore = defineStore('qrStore', () => {
       preserveState: true,
       preserveScroll: true,
       onSuccess: () => {
-        form.status = 'S'
+        form.status = 0
         alert.value = `El producto ${form.product_name}, ha sido CANJEADO exitosamente.`
       },
       onError: (error) => {

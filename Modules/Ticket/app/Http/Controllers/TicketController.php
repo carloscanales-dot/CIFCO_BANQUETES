@@ -11,8 +11,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
-
 use Modules\Ticket\Traits\SetFilterQuery;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 class TicketController extends Controller
 {
@@ -114,8 +114,18 @@ class TicketController extends Controller
 
     protected function setDataStore($request)
     {
-        $inserts = [];
         $user = Auth::user();
+        $stationUser = DB::table('station_users')->where('user_id', $user->id)->first();
+
+        if (!$stationUser) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'User is not associated with a station.'
+            ], 403));
+        }
+
+        $station_id = $stationUser->station_id;
+
+        $inserts = [];
         $current_date = $this->getCurrentDate()->format('Y-m-d H.i:s');
         $prefix = $this->getPrefixProduct($request->get('product_id'));
         $max_product_id = $this->getMaxProductId($request->get('product_id'));
@@ -125,7 +135,6 @@ class TicketController extends Controller
                 'uuid' => implode('-', [$prefix, $max_product_id]),
                 'status' => $request->get('status'),
                 'product_id' => $request->get('product_id'),
-                'user_id' => $user->user_id,
                 'created_at' => $current_date,
                 'updated_at' => $current_date
 
@@ -143,8 +152,7 @@ class TicketController extends Controller
 
         $ticket =  DB::table('tickets')
             ->where('product_id', $product_id)
-            ->orderBy('ticket_id', 'desc')
-            ->limit(0, 1)
+            ->latest('id')
             ->first();
 
         if ($ticket) {
@@ -159,7 +167,7 @@ class TicketController extends Controller
     protected function getPrefixProduct($product_id)
     {
         $product = DB::table('products')
-            ->where('product_id', $product_id)
+            ->where('id', $product_id)
             ->first();
 
         return $product->prefix;

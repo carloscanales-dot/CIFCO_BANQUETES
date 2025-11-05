@@ -126,12 +126,12 @@ onMounted(() => {
               @update:options="loadItems"
             >
               <template #[`item.status`]="{ item }">
-                {{ item.status === 'D' ? 'Disponible' : 'Canjeado' }}
+                {{ item.status === 1 ? 'Disponible' : 'Canjeado' }}
               </template>
               <template #[`item.action`]="{ item }">
-                <Link :href="`/fund/currentfund/${item.current_fund_id}/edit`" as="button">
+                <!-- <Link :href="`/fund/currentfund/${item.current_fund_id}/edit`" as="button">
                   <VIcon color="warning" icon="mdi-pencil" />
-                </Link>
+                </Link> -->
                 <VIcon class="ml-2" color="error" icon="mdi-delete" @click="deleteItem(item)" />
               </template>
             </VDataTableServer>

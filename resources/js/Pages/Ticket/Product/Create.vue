@@ -1,5 +1,5 @@
 <script setup>
-import { reactive } from 'vue'
+import { reactive, onMounted } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
@@ -12,6 +12,10 @@ const { form, errors, isLoading } = storeToRefs(productStore)
 const submit = () => {
   productStore.store()
 }
+
+onMounted(() => {
+  productStore.resetForm()
+})
 </script>
 
 <template>
