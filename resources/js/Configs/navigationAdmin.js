@@ -41,6 +41,12 @@ export default {
       icon: 'mdi-lock-outline',
       to: '/user/update-password',
       roles: ['Administrador', 'Empleado'] // o los roles que quieras permitir
-    }
+    },
+    {
+      title: 'Impresoras',
+      icon: 'mdi-printer-outline',
+      to: '/admin/printers',
+      roles: ['Administrador'], 
+    },
   ],
 }

@@ -1,4 +1,5 @@
 <template>
+
     <Head title="Ventas" />
     <CajaLayout>
         <v-row>
@@ -9,7 +10,8 @@
                         <v-list-item v-for="item in cart.cartItems" :key="item.product_id">
                             <v-list-item-title>{{ item.product_name }}</v-list-item-title>
                             <v-list-item-subtitle>
-                                {{ item.quantity }} x ${{ item.unit_price.toFixed(2) }} = ${{ (item.quantity * item.unit_price).toFixed(2) }}
+                                {{ item.quantity }} x ${{ item.unit_price.toFixed(2) }} = ${{ (item.quantity *
+                                item.unit_price).toFixed(2) }}
                             </v-list-item-subtitle>
                             <template v-slot:append>
                                 <v-btn icon size="small" @click="cart.incrementItem(item.product_id)" color="green">
@@ -40,7 +42,8 @@
             <v-col cols="12" md="8">
                 <v-row>
                     <v-col v-for="product in products" :key="product.product_id" cols="6" sm="4" lg="3">
-                        <v-card @click="cart.addItem(product)" style="background-color: #32385d; color: white;" theme="dark" class="text-center" height="180px" fill-height>
+                        <v-card @click="cart.addItem(product)" style="background-color: #32385d; color: white;"
+                            theme="dark" class="text-center" height="180px" fill-height>
                             <v-card-text class="d-flex flex-column align-center justify-center fill-height">
                                 <div>
                                     <v-icon size="x-large">{{ product.icon }}</v-icon>
@@ -67,31 +70,44 @@ import axios from 'axios'
 const products = ref([])
 const cart = useCartStore()
 const pedidoCounter = ref(1);
-
+const props = defineProps({
+    printer_ip: String,
+});
 
 let epos = null;
 let printer = null;
 
 onMounted(async () => {
+    if (!props.printer_ip) {
+        alert(" No hay una impresora activa asignada a esta estación.");
+        return;
+    }
+
+    console.log("Conectando a impresora con IP:", props.printer_ip);
+
     epos = new window.epson.ePOSDevice();
-    epos.connect('10.0.0.105', 8008, (result) => {
+
+    epos.connect(props.printer_ip, 8008, (result) => {
         if (result !== 'OK') {
-            alert("No se pudo conectar: " + result);
+            alert("No se pudo conectar a la impresora: " + result);
             return;
         }
-        epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, {crypto:false, buffer:false}, (printerDevice, code) => {
+
+        epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, code) => {
             if (!printerDevice) {
                 alert("Error creando dispositivo: " + code);
                 return;
             }
+
             printer = printerDevice;
+            // console.log("Impresora conectada correctamente a:", props.printer_ip);
         });
     });
 
     // Cargar productos de la estación del usuario
-    await loadStationProducts()
-
+    await loadStationProducts();
 });
+
 
 const loadStationProducts = async () => {
     try {
@@ -175,8 +191,8 @@ const printReceipt = async () => {
 
             // Fecha y hora
             const now = new Date();
-            const fecha = now.toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-            const hora = now.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
+            const fecha = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const hora = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
             printer.addText(`PEDIDO N.º ${transactionId}\n`); // mostramos el ID real
             printer.addText(`${fecha} - ${hora}\n`);

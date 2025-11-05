@@ -101,29 +101,43 @@ const employees = ref([])
 const selectedEmployee = ref(null)
 const cart = useCartStore()
 const pedidoCounter = ref(1)
+const props = defineProps({
+    printer_ip: String,
+});
 
 let epos = null
 let printer = null
 
 onMounted(async () => {
-    epos = new window.epson.ePOSDevice()
-    epos.connect('10.0.0.105', 8008, (result) => {
+    if (!props.printer_ip) {
+        alert(" No hay una impresora activa asignada a esta estación.");
+        return;
+    }
+
+    console.log("Conectando a impresora con IP:", props.printer_ip);
+
+    epos = new window.epson.ePOSDevice();
+
+    epos.connect(props.printer_ip, 8008, (result) => {
         if (result !== 'OK') {
-            alert("No se pudo conectar: " + result)
-            return
+            alert("No se pudo conectar a la impresora: " + result);
+            return;
         }
+
         epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, code) => {
             if (!printerDevice) {
-                alert("Error creando dispositivo: " + code)
-                return
+                alert("Error creando dispositivo: " + code);
+                return;
             }
-            printer = printerDevice
-        })
-    })
 
-    await loadProducts()
-    await loadEmployees()
-})
+            printer = printerDevice;
+            // console.log("Impresora conectada correctamente a:", props.printer_ip);
+        });
+    });
+
+    // Cargar productos de la estación del usuario
+    await loadStationProducts();
+});
 
 /* Cargar productos de la estación */
 const loadProducts = async () => {

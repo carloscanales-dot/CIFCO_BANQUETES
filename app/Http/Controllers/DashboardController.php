@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
+use App\Models\Printer;
+use Illuminate\Support\Facades\Auth;
+
 
 class DashboardController extends Controller
 {
@@ -26,13 +29,32 @@ class DashboardController extends Controller
 
     public function ventas()
     {
-        return Inertia::render('Ventas');
+        $user = Auth::user();
+
+        // Obtener impresora activa de la estación del usuario
+        $printer = Printer::where('station_id', $user->station_id)
+            ->where('status', true)
+            ->first(['ip_adress']);
+
+        return Inertia::render('Ventas', [
+            'printer_ip' => $printer?->ip_adress ?? null,
+        ]);
     }
 
     public function creditos()
     {
-        return Inertia::render('Creditos');
+        $user = Auth::user();
+
+        // Obtener impresora activa de la estación del usuario
+        $printer = Printer::where('station_id', $user->station_id)
+            ->where('status', true)
+            ->first(['ip_adress']);
+
+        return Inertia::render('Creditos', [
+            'printer_ip' => $printer?->ip_adress ?? null,
+        ]);
     }
+    
     public function administrar()
     {
         return Inertia::render('Admin/Administrar');
@@ -60,7 +82,7 @@ class DashboardController extends Controller
         })->values();
 
         // 📅 Ganancias por día (formateado por fecha)
-        $gainsByDate = $data->groupBy(fn ($item) => \Carbon\Carbon::parse($item->created_at)->format('Y-m-d'))
+        $gainsByDate = $data->groupBy(fn($item) => \Carbon\Carbon::parse($item->created_at)->format('Y-m-d'))
             ->map(function ($group, $date) {
                 $total = $group->sum('unit_price');
                 return ['label' => $date, 'value' => round($total, 2)];
