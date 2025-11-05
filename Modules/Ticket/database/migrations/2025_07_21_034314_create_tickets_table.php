@@ -16,7 +16,6 @@ return new class extends Migration
             $table->string('uuid', 125)->unique(); // UUID del ticket
             $table->unsignedTinyInteger('status')->default(1); // Estado del ticket
             $table->foreignId('product_id')->constrained('products')->onUpdate('cascade'); // Producto canjeado
-            $table->foreignId('station_id')->constrained('stations')->onUpdate('cascade'); // Estación donde se canjeó el ticket 
             $table->timestamp('redeem_date')->nullable(); // Fecha de canje (nullable si aún no se ha canjeado)
             $table->timestamps();
         });

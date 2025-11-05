@@ -71,7 +71,7 @@ onMounted(() => {
             color="primary"
           ></VBtn>
           <Link href="/ticket/product" as="div">
-            <VBtn prepend-icon="mdi-cancel" text="Cancelar" variant="tonal"></VBtn>
+            <VBtn prepend-icon="mdi-cancel" text="Cancelar" variant="tonal" @click="productStore.resetForm()"></VBtn>
           </Link>
         </VCardActions>
       </VForm>

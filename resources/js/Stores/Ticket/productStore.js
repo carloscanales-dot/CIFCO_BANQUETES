@@ -108,6 +108,10 @@ export const useProductStore = defineStore('productStore', () => {
     })
   }
 
+  const resetForm = () => {
+    form.reset()
+  }
+
   const destroy = (id) => {
     isLoading.value = true
 
@@ -137,5 +141,6 @@ export const useProductStore = defineStore('productStore', () => {
     ajaxStore,
     update,
     destroy,
+    resetForm,
   }
 })

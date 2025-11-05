@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 use Modules\Ticket\Traits\SetFilterQuery;
 
@@ -36,14 +37,11 @@ class ReaderController extends Controller
         $product_name = Str::upper($ticket->product_name);
 
         switch ($ticket->status) {
-            case 'C':
+            case 0:
                 $success = false;
                 $message = "El producto $product_name, ya ha sido CANJEADO.";
                 break;
-            case 'A':
-                $success = false;
-                $message = "El producto $product_name, ha sido ANULADO.";
-                break;
+            case 1:
             default:
                 $message = "El producto $product_name, esta disponible, desea CANJEARLO?.";
         }
@@ -61,14 +59,22 @@ class ReaderController extends Controller
     public function store(ReaderRequest $request)
     {
         $station = $this->getStation();
-        $dataStore = $this->setDataStore($request, $station->station_user_id);
+
+        if (!$station) {
+            throw new HttpResponseException(response()->json([
+                'message' => 'User is not associated with a station.'
+            ], 403));
+        }
+
+        $dataStore = $this->setDataStore($request, $station->station_id);
 
         DB::transaction(function () use ($dataStore) {
             $stationTicketId = DB::table('station_tickets')->insertGetId($dataStore);
 
             if ($stationTicketId) {
-                DB::table('tickets')->where('ticket_id', $dataStore['ticket_id'])->update([
-                    'status' => 'C'
+                DB::table('tickets')->where('id', $dataStore['ticket_id'])->update([
+                    'status' => 0,
+                    'redeem_date' => $this->getCurrentDate(),
                 ]);
             }
         });
@@ -102,13 +108,13 @@ class ReaderController extends Controller
         }
     }
 
-    private function setDataStore($request, $station_user_id)
+    private function setDataStore($request, $station_id)
     {
         $current_date = $this->getCurrentDate()->format('Y-m-d H.i:s');
 
         return [
             'ticket_id' => $request->get('ticket_id'),
-            'station_user_id' => $station_user_id,
+            'station_id' => $station_id,
             'created_at' => $current_date,
             'updated_at' => $current_date,
         ];
@@ -119,7 +125,7 @@ class ReaderController extends Controller
         $user = Auth::user();
 
         return DB::table('station_users')
-            ->where('user_id', $user->user_id)
+            ->where('user_id', $user->id)
             ->first();
     }
 

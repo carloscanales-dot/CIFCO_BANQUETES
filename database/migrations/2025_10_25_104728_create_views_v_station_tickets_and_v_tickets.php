@@ -32,8 +32,10 @@ return new class extends Migration
                     (st.id = su.station_id)
                 JOIN users u ON
                     (su.user_id = u.id)
+                JOIN station_tickets stt ON
+                    (stt.station_id = st.id)
                 JOIN tickets tc ON
-                    (tc.station_id = st.id)
+                    (tc.id = stt.ticket_id)
                 JOIN products pr ON
                     (pr.id = tc.product_id) ");
 

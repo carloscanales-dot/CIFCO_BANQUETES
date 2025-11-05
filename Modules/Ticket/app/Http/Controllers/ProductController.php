@@ -36,7 +36,7 @@ class ProductController extends Controller
         });
 
         $result = $query
-            ->select('id', 'prefix', 'product_name', 'unit_price', 'cost', 'status')
+            ->select('id as product_id', 'prefix', 'product_name', 'unit_price', 'cost', 'status')
             ->paginate($request->get('limit', 10));
 
         if ($request->expectsJson()) {
@@ -56,10 +56,10 @@ class ProductController extends Controller
         $products =  DB::table('products')
             ->where(function ($query) use ($status) {
                 if ($status === 'Activo') {
-                    $query->where('status', $status);
+                    $query->where('status', $status)->orWhere('status', 1);
                 }
             })
-            ->select('product_id', 'product_name')
+            ->select('id as product_id', 'product_name')
             ->orderBy('product_name', 'asc')
             ->get();
 
@@ -151,7 +151,7 @@ class ProductController extends Controller
 
     public function all()
     {
-        return response()->json(\Modules\Ticket\Models\Product::select('id', 'product_name')->where('status', 1)->get());
+        return response()->json(\Modules\Ticket\Models\Product::select('id as product_id', 'product_name')->where('status', 1)->orWhere('status', 'Activo')->get());
     }
 
 

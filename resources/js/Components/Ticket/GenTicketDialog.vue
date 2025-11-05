@@ -9,22 +9,28 @@ const toast = useToast()
 const ticketStore = useTicketStore()
 const productStore = useProductStore()
 const { products } = storeToRefs(productStore)
-const { form, errors, isLoading } = storeToRefs(ticketStore)
 
 const emits = defineEmits(['result'])
 
 const submit = async () => {
+  if (!ticketStore.form.product_id) {
+    toast.error('Please select a product.')
+    return
+  }
+  if (!ticketStore.form.quantity) {
+    toast.error('Please enter a quantity.')
+    return
+  }
+
   try {
     await ticketStore.ajaxStore()
     emits('result', { success: true })
   } catch (error) {
-    toast.error(error.message)
+    // error is handled in the store
   }
 }
 
-onMounted(() => {
-  productStore.ajaxList('Activo')
-})
+
 </script>
 <template>
   <VDialog persistent max-width="600">
@@ -34,13 +40,13 @@ onMounted(() => {
           <VRow>
             <VCol cols="12" md="12" sm="12">
               <VAutocomplete
-                v-model="form.product_id"
+                v-model="ticketStore.form.product_id"
                 label="Nombre del producto"
                 :items="products"
                 item-title="product_name"
                 item-value="product_id"
                 clearable
-                :error-messages="errors.product_id"
+                :error-messages="ticketStore.errors.product_id"
               >
               </VAutocomplete>
             </VCol>
@@ -48,22 +54,22 @@ onMounted(() => {
           <VRow>
             <VCol cols="12" md="6" sm="12">
               <VNumberInput
-                v-model="form.quantity"
+                v-model="ticketStore.form.quantity"
                 label="Cantidad"
-                min="1"
+                :min="1"
                 clearable
-                :error-messages="errors.quantity"
+                :error-messages="ticketStore.errors.quantity"
               ></VNumberInput>
             </VCol>
             <VCol cols="12" md="6" sm="12">
               <VSelect
-                v-model="form.status"
+                v-model="ticketStore.form.status"
                 label="Estatus"
                 :items="statusList"
                 item-title="title"
                 item-value="value"
                 clearable
-                :error-messages="errors.status"
+                :error-messages="ticketStore.errors.status"
               ></VSelect>
             </VCol>
           </VRow>
@@ -75,7 +81,7 @@ onMounted(() => {
             color="primary"
             text="Guardar"
             variant="tonal"
-            :disabled="form.processing"
+            :disabled="ticketStore.form.processing"
           ></VBtn>
           <VBtn
             prepend-icon="mdi-cancel"
@@ -93,7 +99,7 @@ onMounted(() => {
 export default {
   data() {
     return {
-      statusList: [{ title: 'Disponible', value: 'D' }],
+      statusList: [{ title: 'Disponible', value: 1 }],
     }
   },
 }

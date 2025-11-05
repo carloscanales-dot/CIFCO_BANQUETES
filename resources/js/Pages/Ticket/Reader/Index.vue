@@ -27,7 +27,7 @@ const submit = () => {
         <VForm @submit.prevent="submit">
           <VRow dense>
             <VCol cols="12" md="12" sm="12">
-              <v-banner v-if="form.status === 'D'" color="info" icon="$info" :text="alert" stacked>
+              <v-banner v-if="form.status === 1" color="info" icon="$info" :text="alert" stacked>
                 <template v-slot:actions>
                   <VBtn
                     prepend-icon="mdi-database"
