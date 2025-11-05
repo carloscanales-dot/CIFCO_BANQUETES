@@ -3,46 +3,70 @@
 namespace Modules\Ticket\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Routing\Controller;
+use Inertia\Inertia;
 use Modules\Ticket\Models\Location;
+use App\Http\Controllers\Controller;
+
 
 class LocationController extends Controller
 {
-    /**
-     * Listar todas las locations de una feria específica.
-     */
-    public function list($fairId)
+    public function __construct()
     {
-        $locations = Location::where('fair_id', $fairId)->get();
-        return response()->json(['locations' => $locations]);
+        $this->middleware(['auth', 'role:Administrador']);
     }
 
+    /**
+     * Renderiza la vista principal del CRUD de locaciones
+     */
+    public function index()
+    {
+        $locations = Location::orderBy('location_name')->get();
+
+        return Inertia::render('Locations', [
+            'locations' => $locations,
+        ]);
+    }
+
+    /**
+     * Listar todas las locaciones (endpoint API)
+     */
     public function listAll()
     {
         return response()->json(['locations' => Location::all()]);
     }
 
     /**
-     * Guardar una nueva location asociada a una feria.
+     * Crear una nueva locación
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'location_name' => 'required|string|max:65',
-            'fair_id' => 'required|exists:fairs,id',
+            'location_name' => 'required|string|max:65|unique:location,location_name',
         ]);
 
-        $location = Location::create($validated);
+        Location::create($validated);
 
-        return response()->json(['location' => $location]);
+        return redirect()->back()->with('success', 'Locación creada correctamente.');
     }
-
     /**
-     * Eliminar una location.
+     * Actualizar locación existente
+     */
+    public function update(Request $request, Location $location)
+    {
+        $validated = $request->validate([
+            'location_name' => 'required|string|max:65|unique:location,location_name,' . $location->id,
+        ]);
+
+        $location->update($validated);
+
+        return redirect()->back()->with('success', 'Locación actualizada correctamente.');
+    }
+    /**
+     * Eliminar locación
      */
     public function destroy(Location $location)
     {
         $location->delete();
-        return response()->noContent(); // 204 No Content
+        return redirect()->back()->with('success', 'Locación eliminada correctamente.');
     }
 }
