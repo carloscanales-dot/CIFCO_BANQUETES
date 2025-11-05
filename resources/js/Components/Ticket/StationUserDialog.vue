@@ -1,5 +1,5 @@
 <template>
-  <VDialog v-model="dialog" max-width="600px">
+  <VDialog v-model="dialog" max-width="600px" persistent="">
     <VCard>
       <VCardTitle>
         <span class="text-h6">

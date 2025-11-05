@@ -81,7 +81,7 @@
                         >
                             <v-card-text class="d-flex flex-column align-center justify-center fill-height">
                                 <v-icon size="64" class="mb-4">mdi-account-credit-card</v-icon>
-                                <div class="text-h6">Créditos Empleados</div>
+                                <div class="text-h6">Ventas Empleados</div>
                                 <div>Acceder a la página de créditos empleados.</div>
                             </v-card-text>
                         </v-card>

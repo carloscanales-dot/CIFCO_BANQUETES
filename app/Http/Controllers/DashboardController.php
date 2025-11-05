@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\Printer;
 use Illuminate\Support\Facades\Auth;
+use Modules\Ticket\Models\Station;
+
 
 
 class DashboardController extends Controller
@@ -31,30 +33,54 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        // Obtener impresora activa de la estación del usuario
-        $printer = Printer::where('station_id', $user->station_id)
+        // Obtener la estación asignada (la primera, por si tuviera más de una)
+        $station = $user->stations()->first();
+
+        // Si el usuario no tiene estación → no hay impresora
+        if (!$station) {
+            return Inertia::render('Ventas', [
+                'printer_ip' => null,
+                'station_name' => null,
+            ]);
+        }
+
+        // Buscar la impresora activa asociada a la estación
+        $printer = Printer::where('station_id', $station->id)
             ->where('status', true)
             ->first(['ip_adress']);
 
         return Inertia::render('Ventas', [
             'printer_ip' => $printer?->ip_adress ?? null,
+            'station_name' => $station->station_name,
         ]);
     }
 
     public function creditos()
     {
-        $user = Auth::user();
+       $user = Auth::user();
 
-        // Obtener impresora activa de la estación del usuario
-        $printer = Printer::where('station_id', $user->station_id)
+        // Obtener la estación asignada (la primera, por si tuviera más de una)
+        $station = $user->stations()->first();
+
+        // Si el usuario no tiene estación → no hay impresora
+        if (!$station) {
+            return Inertia::render('Creditos', [
+                'printer_ip' => null,
+                'station_name' => null,
+            ]);
+        }
+
+        // Buscar la impresora activa asociada a la estación
+        $printer = Printer::where('station_id', $station->id)
             ->where('status', true)
             ->first(['ip_adress']);
 
         return Inertia::render('Creditos', [
             'printer_ip' => $printer?->ip_adress ?? null,
+            'station_name' => $station->station_name,
         ]);
     }
-    
+
     public function administrar()
     {
         return Inertia::render('Admin/Administrar');

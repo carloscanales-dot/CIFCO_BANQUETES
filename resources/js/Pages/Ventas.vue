@@ -72,12 +72,17 @@ const cart = useCartStore()
 const pedidoCounter = ref(1);
 const props = defineProps({
     printer_ip: String,
-});
+    station_name: String
+})
+
 
 let epos = null;
 let printer = null;
 
 onMounted(async () => {
+      // Cargar productos de la estación del usuario
+    await loadStationProducts();
+    console.log("Conectando a impresora con IP:", props.printer_ip);
     if (!props.printer_ip) {
         alert(" No hay una impresora activa asignada a esta estación.");
         return;
@@ -104,8 +109,6 @@ onMounted(async () => {
         });
     });
 
-    // Cargar productos de la estación del usuario
-    await loadStationProducts();
 });
 
 
@@ -116,7 +119,7 @@ const loadStationProducts = async () => {
 
         // Mapear los productos y asegurar que unit_price sea un número
         products.value = response.data.products.map(p => ({
-            product_id: p.id,
+            product_id: p.product_id,
             product_name: p.product_name,
             unit_price: Number(p.unit_price) || 0, // Convertir a número, fallback a 0
             icon: p.icon || 'mdi-food'

@@ -33,6 +33,8 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
         Route::resource('/stationTicket', StationTicketController::class)->only(['index']);
          Route::get('cajas/products', [StationSaleController::class, 'getProductsForUser'])
         ->name('cajas.products');
+        Route::get('/stations/my-products', [StationSaleController::class, 'getProductsForUser'])
+        ->name('stations.my-products');
         Route::post('cajas/transactions/store', [TransactionController::class, 'store'])
         ->name('transactions.store');
 

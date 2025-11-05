@@ -52,4 +52,10 @@ class Station extends Model
         return $this->belongsToMany(Product::class, 'station_products', 'station_id', 'product_id')
             ->withTimestamps();
     }
+
+    public function printer()
+    {
+        return $this->hasOne(\App\Models\Printer::class);
+    }
+
 }

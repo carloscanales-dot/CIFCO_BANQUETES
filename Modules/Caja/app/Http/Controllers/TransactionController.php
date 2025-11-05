@@ -14,7 +14,7 @@ class TransactionController extends Controller
         $cartItems = $request->input('cartItems', []);
         $total = $request->input('total', 0);
         $station_id = $request->input('station_id', 1);
-        $employee_id = $request->input('employee_id', 104); // 🔹 Por defecto 104 (cliente general)
+        $employee_id = $request->input('employee_id', 103); // 🔹 Por defecto 104 (cliente general)
 
         // Buscar la última apertura de terminal del usuario autenticado
         $terminalOpening = DB::table('payment_terminal_opening')

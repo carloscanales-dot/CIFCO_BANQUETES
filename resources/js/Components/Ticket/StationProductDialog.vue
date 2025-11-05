@@ -1,5 +1,5 @@
 <template>
-  <VDialog v-model="localDialog" max-width="600" persistent>
+  <VDialog v-model="localDialog" max-width="600">
     <VCard>
       <VCardTitle>
         <span class="text-h6">Agregar productos a {{ station?.station_name }}</span>
@@ -28,81 +28,69 @@
 
       <VCardActions>
         <VSpacer />
-        <VBtn text="Cancelar" color="grey" @click="closeDialog" />
-        <VBtn text="Guardar" color="primary" @click="saveProducts" />
+        <VBtn color="grey" text @click="closeDialog">Cancelar</VBtn>
+        <VBtn color="primary" text @click="saveProducts">Guardar</VBtn>
       </VCardActions>
     </VCard>
   </VDialog>
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import axios from 'axios'
 
 const props = defineProps({
   modelValue: Boolean,
-  station: Object,
+  station: {
+    type: Object,
+    default: null
+  }
 })
 
 const emit = defineEmits(['update:modelValue'])
 
-const localDialog = ref(props.modelValue)
+const localDialog = ref(false)
 const selectedProducts = ref([])
 const productOptions = ref([])
 
-// Abrir/Cerrar diálogo
-watch(
-  () => props.modelValue,
-  (val) => {
-    localDialog.value = val
-  }
-)
+// ✅ Soportar estaciones con station_id o id
+const stationId = computed(() => props.station?.station_id ?? props.station?.id)
 
-// Cargar todos los productos disponibles al montar el componente
-onMounted(async () => {
-  try {
-    const response = await axios.get('/ticket/product/all')
-    productOptions.value = response.data
-  } catch (error) {
-    console.error('Error al cargar productos:', error)
+watch(() => props.modelValue, (val) => { localDialog.value = val })
+
+watch(localDialog, async (isOpen) => {
+  emit('update:modelValue', isOpen)
+
+  if (isOpen && stationId.value) {
+    console.log("🔄 Cargando productos ya asignados")
+    const res = await axios.get(`/ticket/station/${stationId.value}/products`)
+    selectedProducts.value = res.data.map(p => p.id)
+  }
+
+  if (!isOpen) {
+    selectedProducts.value = []
   }
 })
 
-// Cargar productos asignados cada vez que se abra el modal
-watch(
-  () => localDialog.value,
-  async (val) => {
-    if (val && props.station?.id) {
-      try {
-        const response = await axios.get(`/ticket/station/${props.station.id}/products`)
-        selectedProducts.value = response.data.map(p => p.id)
-      } catch (error) {
-        console.error('Error al cargar productos asignados:', error)
-      }
-    }
-    if (!val) {
-      selectedProducts.value = [] // limpiar al cerrar
-    }
-  }
-)
+// ✅ Cargar y normalizar productos disponibles
+onMounted(async () => {
+  console.log("📦 Cargando lista total de productos")
+  const res = await axios.get('/ticket/product/all')
+  productOptions.value = res.data.map(p => ({
+    id: p.id ?? p.product_id,        // ✅ Normalización segura
+    product_name: p.product_name
+  }))
+})
 
-// Cerrar diálogo
-const closeDialog = () => {
-  emit('update:modelValue', false)
-}
-
-// Guardar productos seleccionados en la estación
+// Guardar cambios
 const saveProducts = async () => {
-  if (!props.station?.id) return
-
-  try {
-    await axios.post(`/ticket/station/${props.station.id}/products`, {
-      product_ids: selectedProducts.value, // puede ser []
-    })
-    closeDialog()
-  } catch (error) {
-    console.error('Error al guardar productos:', error)
-  }
+  await axios.post(`/ticket/station/${stationId.value}/products`, {
+    product_ids: selectedProducts.value
+  })
+  localDialog.value = false
 }
 
+const closeDialog = () => {
+  localDialog.value = false
+}
 </script>

@@ -31,7 +31,7 @@ class StationSaleController extends Controller
         $products = DB::table('station_products')
             ->join('products', 'station_products.product_id', '=', 'products.id')
             ->where('station_products.station_id', $station->station_id)
-            ->select('products.id', 'products.product_name', 'products.unit_price')
+            ->select('products.id as product_id', 'products.product_name', 'products.unit_price')
             ->get();
 
         // Agregar un ícono por defecto para el frontend
