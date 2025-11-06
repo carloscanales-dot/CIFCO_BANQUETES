@@ -32,7 +32,11 @@ class LocationController extends Controller
      */
     public function listAll()
     {
-        return response()->json(['locations' => Location::all()]);
+        return response()->json(
+            \Modules\Ticket\Models\Location::select('id', 'location_name')
+                ->orderBy('location_name')
+                ->get()
+        );
     }
 
     /**

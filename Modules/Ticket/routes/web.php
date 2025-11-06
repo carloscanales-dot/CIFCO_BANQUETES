@@ -21,6 +21,9 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
         Route::resource('/ticket', TicketController::class)->except(['show']);
         // CRUD completo de locaciones
         Route::resource('/location', LocationController::class)->except(['show']);
+        Route::get('/location/all', [LocationController::class, 'listAll'])
+            ->middleware('auth')
+            ->name('location.all');
     });
     // Administrador o Empleado
     Route::middleware('role:Administrador|Empleado')->group(function () {
@@ -31,7 +34,7 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
         Route::resource('/stationTicket', StationTicketController::class)->only(['index']);
         Route::get('cajas/products', [StationSaleController::class, 'getProductsForUser'])->name('cajas.products');
         Route::get('/stations/my-products', [StationSaleController::class, 'getProductsForUser'])
-        ->name('stations.my-products');
+            ->name('stations.my-products');
         Route::post('cajas/transactions/store', [TransactionController::class, 'store'])->name('transactions.store');
         // Empleados
         Route::get('/empleados/list', [EmployeeController::class, 'list'])->name('employees.list');
