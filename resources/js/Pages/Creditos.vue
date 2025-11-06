@@ -9,7 +9,7 @@
 
                     <!-- Select de empleado -->
                     <v-card-text>
-                        <v-select
+                        <v-combobox
                             v-model="selectedEmployee"
                             :items="employees"
                             item-title="name"
@@ -18,7 +18,8 @@
                             outlined
                             dense
                             prepend-icon="mdi-account"
-                        ></v-select>
+                            clearable
+                        ></v-combobox>
                     </v-card-text>
 
                     <!-- Lista de productos seleccionados -->
@@ -202,7 +203,7 @@ const printCreditReceipt = async () => {
     try {
         // Enviar crédito al backend
         const response = await axios.post('/ticket/cajas/transactions/store', {
-            employee_id: selectedEmployee.value,
+            employee_id: selectedEmployee.value.id,
             cartItems: cart.cartItems,
             total: cart.cartTotal,
             station_id: 1
@@ -214,7 +215,7 @@ const printCreditReceipt = async () => {
         }
 
         const transactionId = response.data.transaction_id
-        const empleado = employees.value.find(e => e.id === selectedEmployee.value)
+        const empleado = selectedEmployee.value
 
         // --- Imprimir recibo ---
         const printOnce = () => {
@@ -244,7 +245,7 @@ const printCreditReceipt = async () => {
             printer.addFeedLine(1)
 
             printer.addTextStyle(false, false, true, printer.COLOR_1)
-            printer.addText("COMIDA ITALIANA\n")
+            printer.addText("COMIDA CHINA\n")
             printer.addTextStyle(false, false, false, printer.COLOR_1)
             printer.addText("https://cifco.gob.sv/\n")
             printer.addText("-----------------------------\n")
@@ -263,14 +264,14 @@ const printCreditReceipt = async () => {
                 hour12: true
             })
 
-            printer.addText(`CRÉDITO N.º ${transactionId}\n`)
+            printer.addTextAlign(printer.ALIGN_CENTER)
+            printer.addText(`VENTA N.º ${transactionId}\n`)
             printer.addText(`${fecha} - ${hora}\n`)
             printer.addText(`EMPLEADO: ${empleado?.name || 'N/A'}\n`)
             printer.addText("-----------------------------\n")
 
-            printer.addTextAlign(printer.ALIGN_LEFT)
-            printer.addText("CANT  ARTÍCULO                          PRECIO\n")
-
+            printer.addText("CANT  ARTÍCULO                  PRECIO\n")
+            printer.addTextAlign(printer.ALIGN_CENTER)
             cart.cartItems.forEach(item => {
                 const name = item.product_name.trim()
                 const price = `$${(item.unit_price * item.quantity).toFixed(2)}`

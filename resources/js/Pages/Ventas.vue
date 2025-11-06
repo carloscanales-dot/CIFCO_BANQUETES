@@ -187,7 +187,7 @@ const printReceipt = async () => {
             printer.addFeedLine(1);
 
             printer.addTextStyle(false, false, true, printer.COLOR_1);
-            printer.addText("COMIDA ITALIANA\n");
+            printer.addText("COMIDA CHINA\n");
             printer.addTextStyle(false, false, false, printer.COLOR_1);
             printer.addText("https://cifco.gob.sv/\n");
             printer.addText("-----------------------------\n");
@@ -197,14 +197,14 @@ const printReceipt = async () => {
             const fecha = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
             const hora = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
-            printer.addText(`PEDIDO N.º ${transactionId}\n`); // mostramos el ID real
-            printer.addText(`${fecha} - ${hora}\n`);
+            printer.addTextAlign(printer.ALIGN_CENTER)
+            printer.addText(`VENTA N.º ${transactionId}\n`)
+            printer.addText(`${fecha} - ${hora}\n`)
             printer.addText("USUARIO: Alejandra Portillo\n");
-            printer.addText("-----------------------------\n");
+            printer.addText("-----------------------------\n")
 
-            printer.addTextAlign(printer.ALIGN_LEFT);
-            printer.addText("CANT  ARTÍCULO                          PRECIO\n");
-
+            printer.addText("CANT  ARTÍCULO                  PRECIO\n")
+            printer.addTextAlign(printer.ALIGN_CENTER)
             cart.cartItems.forEach(item => {
                 const name = item.product_name.trim();
                 const price = `$${(item.unit_price * item.quantity).toFixed(2)}`;
