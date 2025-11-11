@@ -37,10 +37,16 @@ export default {
       roles: ['Administrador'],
     },
     {
+      title: 'Payment Terminals',
+      icon: 'mdi-credit-card-outline',
+      to: '/payment-terminals',
+      roles: ['Administrador'],
+    },
+    {
       title: 'Cambiar Contraseña',
       icon: 'mdi-lock-outline',
       to: '/user/update-password',
-      roles: ['Administrador', 'Empleado'] // o los roles que quieras permitir
+      roles: ['Administrador', 'Empleado'],
     },
     {
       title: 'Impresoras',
@@ -52,9 +58,15 @@ export default {
       title: 'Locaciones',
       icon: 'mdi-map-marker-outline',
       to: '/ticket/location',
-      roles: ['Administrador'], // solo visible para administradores
+      roles: ['Administrador'],
       exact: true,
-    }
-
+    },
+    {
+      title: 'Aperturas y Cierres',
+      icon: 'mdi-cash-register',
+      to: '/terminal-sessions',
+      roles: ['Administrador'],
+      exact: true,
+    },
   ],
 }

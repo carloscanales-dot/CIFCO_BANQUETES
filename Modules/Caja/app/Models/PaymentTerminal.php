@@ -7,33 +7,51 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Ticket\Models\Station;
 
-
 class PaymentTerminal extends Model
 {
     use HasFactory;
 
-    // Si tu migración creó la tabla 'payment_terminal' en singular:
     protected $table = 'payment_terminal';
 
     protected $fillable = [
         'terminal_name',
-        'status',
+        'status_id',
         'station_id',
         'user_id',
     ];
 
     protected $casts = [
-        'status' => 'boolean',
+        'status_id' => 'integer',
     ];
 
-    // Relaciones
+    /* ----------------------------------
+       Relaciones
+    ----------------------------------- */
+
+    // Estado actual de la terminal (Abierta / Cerrada)
+    public function status(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Status::class, 'status_id');
+    }
+
+    // Estación asociada
     public function station(): BelongsTo
     {
         return $this->belongsTo(Station::class, 'station_id');
     }
 
+    // Usuario asignado (cajero)
     public function user(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'user_id');
+    }
+
+    // Aperturas asociadas
+    public function openings()
+    {
+        return $this->hasMany(
+            \Modules\Caja\App\Models\PaymentTerminalOpening::class,
+            'payment_terminal_id'
+        );
     }
 }
