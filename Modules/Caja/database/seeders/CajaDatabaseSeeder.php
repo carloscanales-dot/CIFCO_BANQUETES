@@ -11,6 +11,9 @@ class CajaDatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // $this->call([]);
+        $this->call([
+            PaymentMethodSeeder::class,
+            TransactionTypeSeeder::class,
+        ]);
     }
 }

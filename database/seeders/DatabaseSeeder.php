@@ -17,6 +17,10 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             UserSeeder::class,
             ViewsSeeder::class, // si tuvieras uno específico
+            StatusSeeder::class,
+
+            \Modules\Caja\Database\Seeders\CajaDatabaseSeeder::class,
+            \Modules\Ticket\Database\Seeders\TicketDatabaseSeeder::class,
         ]);
     }
 }
