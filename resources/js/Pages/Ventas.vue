@@ -161,30 +161,47 @@ const printReceipt = async () => {
 
         // 2️⃣ Imprimir recibo
         const printOnce = () => {
-            const width = 512; // 80 mm
-            const height = 288;
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            const imageData = ctx.createImageData(width, height);
+        // Tamaño ORIGINAL del bitmap
+        const sourceWidth = 512;
+        const sourceHeight = 288;
 
-            // Render del logo
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const byteIndex = Math.floor(x / 8) + y * Math.ceil(width / 8);
-                    const bit = 7 - (x % 8);
-                    const isBlack = (logoBitmap[byteIndex] >> bit) & 1;
-                    const idx = (y * width + x) * 4;
-                    imageData.data[idx] = imageData.data[idx + 1] = imageData.data[idx + 2] = isBlack ? 0 : 255;
-                    imageData.data[idx + 3] = 255;
-                }
+        // Tamaño REDUCIDO que quieres
+        const width = 256;
+        const height = 144;
+
+        // Canvas temporal para leer el bitmap original
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = sourceWidth;
+        tempCanvas.height = sourceHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        const tempData = tempCtx.createImageData(sourceWidth, sourceHeight);
+
+        // Renderizar la imagen tal como está en el array
+        for (let y = 0; y < sourceHeight; y++) {
+            for (let x = 0; x < sourceWidth; x++) {
+                const byteIndex = Math.floor(x / 8) + y * Math.ceil(sourceWidth / 8);
+                const bit = 7 - (x % 8);
+                const isBlack = (logoBitmap[byteIndex] >> bit) & 1;
+                const idx = (y * sourceWidth + x) * 4;
+                tempData.data[idx] = tempData.data[idx + 1] = tempData.data[idx + 2] = isBlack ? 0 : 255;
+                tempData.data[idx + 3] = 255;
             }
-            ctx.putImageData(imageData, 0, 0);
+        }
+        tempCtx.putImageData(tempData, 0, 0);
 
-            printer.addTextAlign(printer.ALIGN_CENTER);
-            printer.addImage(ctx, 0, 0, width, height, printer.COLOR_1, printer.MODE_MONO);
-            printer.addFeedLine(1);
+        // Canvas final ESCALADO
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+
+        // Escalar suavemente el logo
+        ctx.drawImage(tempCanvas, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
+
+        // Imprimir
+        printer.addTextAlign(printer.ALIGN_CENTER);
+        printer.addImage(ctx, 0, 0, width, height, printer.COLOR_1, printer.MODE_MONO);
+        printer.addFeedLine(1);
 
             printer.addTextStyle(false, false, true, printer.COLOR_1);
             printer.addText("COMIDA CHINA\n");
@@ -203,31 +220,32 @@ const printReceipt = async () => {
             printer.addText("USUARIO: Alejandra Portillo\n");
             printer.addText("-----------------------------\n")
 
-            printer.addText("CANT  ARTÍCULO                  PRECIO\n")
+            printer.addText("CANT  ARTÍCULO            P.UNIT   SUBTOTAL\n");
             printer.addTextAlign(printer.ALIGN_CENTER)
             cart.cartItems.forEach(item => {
+                const qty = item.quantity.toString().padEnd(4);
                 const name = item.product_name.trim();
-                const price = `$${(item.unit_price * item.quantity).toFixed(2)}`;
-                const quantity = item.quantity.toString().padEnd(5);
+                const unit = item.unit_price.toFixed(2).padStart(4);
+                const total = (item.unit_price * item.quantity).toFixed(2).padStart(7);
 
-                const maxLength = 26;
-                const lines = [];
-                for (let i = 0; i < name.length; i += maxLength) lines.push(name.slice(i, i + maxLength));
+                const max = 18; // espacio para nombre
+                const firstLine = name.slice(0, max).padEnd(max);
 
-                printer.addText(`${quantity}${lines[0].padEnd(30)}${price}\n`);
-                for (let i = 1; i < lines.length; i++) {
-                    printer.addText(`     ${lines[i]}\n`);
+                printer.addText(`${qty} ${firstLine} ${unit} ${total}\n`);
+
+                // Si el nombre es más largo, imprimir las demás líneas
+                for (let i = max; i < name.length; i += max) {
+                    printer.addText(`     ${name.slice(i, i + max)}\n`);
                 }
             });
 
             printer.addTextAlign(printer.ALIGN_CENTER);
             printer.addText("-----------------------------\n");
-            printer.addText(`Subtotal: $${cart.cartTotal.toFixed(2)}\n`);
             printer.addTextStyle(false, false, true, printer.COLOR_1);
             printer.addText(`TOTAL: $${cart.cartTotal.toFixed(2)}\n`);
             printer.addTextStyle(false, false, false, printer.COLOR_1);
             printer.addText("-----------------------------\n");
-            printer.addText("¡GRACIAS POR SU COMPRA!\n");
+            printer.addText("¡GRACIAS POR SU PREFERENCIA!\n");
             printer.addFeedLine(1);
             printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
             printer.addFeedLine(3);
