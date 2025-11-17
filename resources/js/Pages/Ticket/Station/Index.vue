@@ -107,7 +107,7 @@ const applyFilter = () => {
 
         <VRow dense>
           <VCol cols="12">
-            <VBtn prepend-icon="mdi-filter" color="primary" @click="applyFilter">
+            <VBtn prepend-icon="mdi-filter" color="black" @click="applyFilter">
               Filtrar
             </VBtn>
           </VCol>
@@ -124,11 +124,11 @@ const applyFilter = () => {
               @update:options="loadItems"
             >
               <template #item.actions="{ item }">
-              <VBtn color="success" class="mr-2" @click="openProductDialog(item)">
+              <VBtn color="black" class="mr-2" @click="openProductDialog(item)">
                 PRODUCTO
               </VBtn>
 
-              <VBtn color="info" class="mr-2" @click="openUserDialog(item)">
+              <VBtn color="black" class="mr-2" @click="openUserDialog(item)">
                 USUARIOS
               </VBtn>
             </template>

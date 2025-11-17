@@ -1,5 +1,4 @@
 <template>
-
     <Head title="Ventas" />
     <CajaLayout>
         <v-row>
@@ -35,7 +34,7 @@
                         </div>
                     </v-card-text>
                     <v-card-actions>
-                        <v-btn color="primary" block @click="printReceipt">Pagar</v-btn>
+                        <v-btn color="primary" block @click="abrirModalPago">Pagar</v-btn>
                     </v-card-actions>
                 </v-card>
             </v-col>
@@ -57,12 +56,49 @@
             </v-col>
         </v-row>
     </CajaLayout>
+
+    <v-dialog v-model="showPaymentModal" width="450" persistent>
+  <v-card>
+    <v-card-title class="font-weight-bold">Forma de Pago</v-card-title>
+
+    <v-card-text>
+      <v-radio-group v-model="paymentMethod">
+
+        <v-radio :value="1" label="Efectivo"></v-radio>
+
+        <v-radio :value="2" label="Tarjeta"></v-radio>
+
+        <v-radio :value="3" label="Chivo Wallet" disabled></v-radio>
+
+      </v-radio-group>
+
+      <!-- Campo efectivo recibido -->
+      <div v-if="paymentMethod === 1" class="mt-4">
+        <v-text-field
+          label="Efectivo recibido"
+          type="number"
+          v-model.number="efectivoRecibido"
+        />
+        <div class="mt-2 d-flex justify-space-between font-weight-bold">
+          <span>Cambio:</span>
+          <span>${{ cambio }}</span>
+        </div>
+      </div>
+    </v-card-text>
+
+    <v-card-actions>
+      <v-btn variant="text" @click="showPaymentModal = false; resetModalPago()">Cancelar</v-btn>
+      <v-btn color="primary" @click="confirmarPago">Confirmar Pago</v-btn>
+    </v-card-actions>
+  </v-card>
+</v-dialog>
+
 </template>
 
 <script setup>
 import CajaLayout from '@/Layouts/CajaLayout.vue'
 import { Head } from '@inertiajs/vue3'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useCartStore } from '@/Stores/cart'
 import { logoBitmap } from '../logoBitmap.js'
 import axios from 'axios'
@@ -70,28 +106,70 @@ import axios from 'axios'
 const products = ref([])
 const cart = useCartStore()
 const pedidoCounter = ref(1);
+
 const props = defineProps({
     printer_ip: String,
     station_name: String
 })
 
-
 let epos = null;
 let printer = null;
 
+// Modal Pago
+const showPaymentModal = ref(false)
+const paymentMethod = ref(null)   // 1=Efectivo, 2=Tarjeta, 3=Chivo
+const efectivoRecibido = ref(null)
+
+// Cálculo del cambio solo si es efectivo
+const cambio = computed(() => {
+    if (paymentMethod.value === 1 && efectivoRecibido.value) {
+        return (efectivoRecibido.value - cart.cartTotal).toFixed(2)
+    }
+    return "0.00"
+})
+
+const abrirModalPago = () => {
+    showPaymentModal.value = true
+}
+
+const resetModalPago = () => {
+    paymentMethod.value = null
+    efectivoRecibido.value = null
+}
+
+const cancelarPago = () => {
+    resetModalPago()
+    showPaymentModal.value = false
+}
+
+const confirmarPago = () => {
+    if (!paymentMethod.value) {
+        alert("Seleccione una forma de pago")
+        return
+    }
+
+    if (paymentMethod.value === 1) {
+        if (!efectivoRecibido.value || efectivoRecibido.value < cart.cartTotal) {
+            alert("El efectivo recibido es insuficiente")
+            return
+        }
+    }
+
+    showPaymentModal.value = false
+    resetModalPago()
+    printReceipt()
+}
+
+// Cargar productos
 onMounted(async () => {
-      // Cargar productos de la estación del usuario
     await loadStationProducts();
-    console.log("Conectando a impresora con IP:", props.printer_ip);
+
     if (!props.printer_ip) {
-        alert(" No hay una impresora activa asignada a esta estación.");
+        alert("No hay una impresora activa asignada.");
         return;
     }
 
-    console.log("Conectando a impresora con IP:", props.printer_ip);
-
     epos = new window.epson.ePOSDevice();
-
     epos.connect(props.printer_ip, 8008, (result) => {
         if (result !== 'OK') {
             alert("No se pudo conectar a la impresora: " + result);
@@ -103,31 +181,24 @@ onMounted(async () => {
                 alert("Error creando dispositivo: " + code);
                 return;
             }
-
             printer = printerDevice;
-            // console.log("Impresora conectada correctamente a:", props.printer_ip);
         });
     });
-
 });
-
 
 const loadStationProducts = async () => {
     try {
-        // Llamada a la API: asegúrate de usar la ruta correcta según tu web.php
         const response = await axios.get('/ticket/cajas/products');
 
-        // Mapear los productos y asegurar que unit_price sea un número
         products.value = response.data.products.map(p => ({
             product_id: p.product_id,
             product_name: p.product_name,
-            unit_price: Number(p.unit_price) || 0, // Convertir a número, fallback a 0
+            unit_price: Number(p.unit_price) || 0,
             icon: p.icon || 'mdi-food'
         }));
-    } catch (error) {
-        console.error('Error cargando productos de la estación:', error);
 
-        // Vaciar lista para evitar errores de renderizado
+    } catch (error) {
+        console.error('Error cargando productos:', error);
         products.value = [];
     }
 };
@@ -144,11 +215,11 @@ const printReceipt = async () => {
     }
 
     try {
-        // 1️⃣ Guardar la transacción en el backend
         const response = await axios.post('/ticket/cajas/transactions/store', {
             cartItems: cart.cartItems,
             total: cart.cartTotal,
-            station_id: 1 // aquí puedes usar la estación real si la tienes
+            station_id: 1,
+            payment_method: paymentMethod.value
         });
 
         if (!response.data.success) {
@@ -157,97 +228,85 @@ const printReceipt = async () => {
         }
 
         const transactionId = response.data.transaction_id;
-        console.log("Transacción guardada con ID:", transactionId);
 
-        // 2️⃣ Imprimir recibo
         const printOnce = () => {
-        // Tamaño ORIGINAL del bitmap
-        const sourceWidth = 512;
-        const sourceHeight = 288;
+            const sourceWidth = 512;
+            const sourceHeight = 288;
+            const width = 256;
+            const height = 144;
 
-        // Tamaño REDUCIDO que quieres
-        const width = 256;
-        const height = 144;
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = sourceWidth;
+            tempCanvas.height = sourceHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            const tempData = tempCtx.createImageData(sourceWidth, sourceHeight);
 
-        // Canvas temporal para leer el bitmap original
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = sourceWidth;
-        tempCanvas.height = sourceHeight;
-        const tempCtx = tempCanvas.getContext('2d');
-        const tempData = tempCtx.createImageData(sourceWidth, sourceHeight);
-
-        // Renderizar la imagen tal como está en el array
-        for (let y = 0; y < sourceHeight; y++) {
-            for (let x = 0; x < sourceWidth; x++) {
-                const byteIndex = Math.floor(x / 8) + y * Math.ceil(sourceWidth / 8);
-                const bit = 7 - (x % 8);
-                const isBlack = (logoBitmap[byteIndex] >> bit) & 1;
-                const idx = (y * sourceWidth + x) * 4;
-                tempData.data[idx] = tempData.data[idx + 1] = tempData.data[idx + 2] = isBlack ? 0 : 255;
-                tempData.data[idx + 3] = 255;
+            for (let y = 0; y < sourceHeight; y++) {
+                for (let x = 0; x < sourceWidth; x++) {
+                    const byteIndex = Math.floor(x / 8) + y * Math.ceil(sourceWidth / 8);
+                    const bit = 7 - (x % 8);
+                    const isBlack = (logoBitmap[byteIndex] >> bit) & 1;
+                    const idx = (y * sourceWidth + x) * 4;
+                    tempData.data[idx] = tempData.data[idx + 1] = tempData.data[idx + 2] = isBlack ? 0 : 255;
+                    tempData.data[idx + 3] = 255;
+                }
             }
-        }
-        tempCtx.putImageData(tempData, 0, 0);
+            tempCtx.putImageData(tempData, 0, 0);
 
-        // Canvas final ESCALADO
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(tempCanvas, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
 
-        // Escalar suavemente el logo
-        ctx.drawImage(tempCanvas, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
-
-        // Imprimir
-        printer.addTextAlign(printer.ALIGN_CENTER);
-        printer.addImage(ctx, 0, 0, width, height, printer.COLOR_1, printer.MODE_MONO);
-        printer.addFeedLine(1);
+            printer.addTextAlign(printer.ALIGN_CENTER);
+            printer.addImage(ctx, 0, 0, width, height, printer.COLOR_1, printer.MODE_MONO);
+            printer.addFeedLine(1);
 
             printer.addTextStyle(false, false, true, printer.COLOR_1);
             printer.addText("COMIDA CHINA\n");
             printer.addTextStyle(false, false, false, printer.COLOR_1);
-            printer.addText("https://cifco.gob.sv/\n");
             printer.addText("-----------------------------\n");
 
-            // Fecha y hora
             const now = new Date();
-            const fecha = now.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const hora = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+            const fecha = now.toLocaleDateString('es-ES');
+            const hora = now.toLocaleTimeString('es-ES');
 
-            printer.addTextAlign(printer.ALIGN_CENTER)
-            printer.addText(`VENTA N.º ${transactionId}\n`)
-            printer.addText(`${fecha} - ${hora}\n`)
-            printer.addText("USUARIO: Alejandra Portillo\n");
-            printer.addText("-----------------------------\n")
+            printer.addText(`VENTA N.º ${transactionId}\n`);
+            printer.addText(`${fecha} - ${hora}\n`);
+            printer.addText("-----------------------------\n");
 
-            printer.addText("CANT  ARTÍCULO            P.UNIT   SUBTOTAL\n");
-            printer.addTextAlign(printer.ALIGN_CENTER)
+            printer.addText("CANT  ARTÍCULO            P.UNIT  SUBTOTAL\n");
+
             cart.cartItems.forEach(item => {
                 const qty = item.quantity.toString().padEnd(4);
                 const name = item.product_name.trim();
-                const unit = item.unit_price.toFixed(2).padStart(4);
+                const unit = item.unit_price.toFixed(2).padStart(5);
                 const total = (item.unit_price * item.quantity).toFixed(2).padStart(7);
-
-                const max = 18; // espacio para nombre
+                const max = 18;
                 const firstLine = name.slice(0, max).padEnd(max);
-
                 printer.addText(`${qty} ${firstLine} ${unit} ${total}\n`);
-
-                // Si el nombre es más largo, imprimir las demás líneas
                 for (let i = max; i < name.length; i += max) {
                     printer.addText(`     ${name.slice(i, i + max)}\n`);
                 }
             });
 
-            printer.addTextAlign(printer.ALIGN_CENTER);
             printer.addText("-----------------------------\n");
             printer.addTextStyle(false, false, true, printer.COLOR_1);
             printer.addText(`TOTAL: $${cart.cartTotal.toFixed(2)}\n`);
             printer.addTextStyle(false, false, false, printer.COLOR_1);
+
+            if (paymentMethod.value === 1) {
+                printer.addText(`EFECTIVO: $${efectivoRecibido.value}\n`);
+                printer.addText(`CAMBIO:   $${cambio.value}\n`);
+            } else if (paymentMethod.value === 2) {
+                printer.addText("PAGO CON TARJETA\n");
+            } else if (paymentMethod.value === 3) {
+                printer.addText("PAGO CHIVO\n");
+            }
+
             printer.addText("-----------------------------\n");
-            printer.addText("¡GRACIAS POR SU PREFERENCIA!\n");
-            printer.addFeedLine(1);
-            printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
+            printer.addText("GRACIAS POR SU PREFERENCIA\n");
             printer.addFeedLine(3);
             printer.addCut(printer.CUT_FEED);
         };
@@ -256,7 +315,6 @@ const printReceipt = async () => {
         printOnce();
         printer.send();
 
-        // 3️⃣ Limpiar carrito y actualizar contador
         cart.clearCart();
         pedidoCounter.value++;
 
@@ -265,5 +323,5 @@ const printReceipt = async () => {
         alert("Ocurrió un error al procesar la transacción");
     }
 };
-
 </script>
+
