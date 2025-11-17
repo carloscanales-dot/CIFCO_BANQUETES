@@ -15,14 +15,14 @@ use Illuminate\Support\Facades\DB;
 class PaymentTerminalSessionController extends Controller
 {
     /**
-     * Mostrar la lista de aperturas (con su cierre si existe)
+     * Mostrar lista de aperturas/cierres por terminal
      */
     public function index(Request $request)
     {
         $q = $request->input('q');
         $perPage = $request->input('perPage', 10);
 
-        // 🟢 Buscar la feria activa
+        // Feria activa (status_id = 2 → activa según tu arquitectura)
         $openFair = \Modules\Ticket\Models\Fair::where('status', 2)->first();
 
         if (!$openFair) {
@@ -33,44 +33,44 @@ class PaymentTerminalSessionController extends Controller
             ]);
         }
 
-        // 🟢 Obtener estaciones de la feria activa
+        // Estaciones de la feria activa
         $stationIds = $openFair->stations()->pluck('id');
 
-        // 🟢 Consultar terminales de esas estaciones
-        $terminals = \Modules\Caja\App\Models\PaymentTerminal::with([
+        // Terminales de esas estaciones
+        $terminals = PaymentTerminal::with([
             'station',
             'user',
-            // Cargar su apertura más reciente y su cierre si existe
             'openings' => function ($q) {
-                $q->with('closing')
+                $q->with([
+                    'closing',
+                    'transactions' //Cargar transacciones de la sesión
+                ])
                     ->orderByDesc('opening_date')
-                    ->limit(1); // solo la última apertura
+                    ->limit(1);
             }
+
         ])
             ->whereIn('station_id', $stationIds)
-            ->when($q, fn($query) => $query->where('terminal_name', 'like', "%{$q}%"))
+            ->when(
+                $q,
+                fn($query) =>
+                $query->where('terminal_name', 'like', "%{$q}%")
+            )
             ->orderBy('id', 'desc')
             ->paginate($perPage)
             ->withQueryString();
 
-        // 🟢 Estaciones de la feria activa
-        $stations = $openFair->stations()
-            ->select('id', 'station_name')
-            ->orderBy('station_name')
-            ->get();
-
         return Inertia::render('TerminalSessions', [
             'terminals' => $terminals,
-            'stations'  => $stations,
+            'stations'  => $openFair->stations()->select('id', 'station_name')->get(),
             'fair'      => $openFair,
             'filters'   => $request->only(['q', 'perPage']),
         ]);
     }
 
 
-
     /**
-     * Registrar una nueva apertura de terminal
+     * Registrar una apertura
      */
     public function open(Request $request)
     {
@@ -80,7 +80,7 @@ class PaymentTerminalSessionController extends Controller
             'opening_amount'      => 'required|numeric|min:0',
         ]);
 
-        // Verificar si la terminal ya está abierta
+        // Verificar si ya tiene apertura sin cierre
         $alreadyOpen = PaymentTerminalOpening::where('payment_terminal_id', $data['payment_terminal_id'])
             ->whereDoesntHave('closing')
             ->exists();
@@ -89,16 +89,16 @@ class PaymentTerminalSessionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'La terminal ya tiene una apertura activa.',
-            ], 400);
+            ], 409);
         }
 
         $data['opening_date'] = Carbon::now();
 
         $opening = PaymentTerminalOpening::create($data);
 
-        // Opcional: cambiar estado de la terminal
-        $terminal = PaymentTerminal::find($data['payment_terminal_id']);
-        $terminal->update(['status' => 1]);
+        // Cambiar estado de terminal → abierta (5)
+        PaymentTerminal::where('id', $data['payment_terminal_id'])
+            ->update(['status_id' => 5]);
 
         return response()->json([
             'success' => true,
@@ -107,29 +107,31 @@ class PaymentTerminalSessionController extends Controller
         ]);
     }
 
+
     /**
-     * Registrar el cierre de una terminal
+     * Registrar un cierre
      */
-    public function close(Request $request, $id)
+    public function close(Request $request, $openingId)
     {
-        $opening = PaymentTerminalOpening::with('terminal')->findOrFail($id);
+        $opening = PaymentTerminalOpening::with('terminal')->findOrFail($openingId);
 
         if ($opening->is_closed) {
             return response()->json([
                 'success' => false,
                 'message' => 'Esta apertura ya fue cerrada.',
-            ], 400);
+            ], 409);
         }
 
         $data = $request->validate([
             'expected_amount' => 'required|numeric|min:0',
             'real_amount'     => 'required|numeric|min:0',
-            'closing_balance' => 'required|numeric|min:0',
+            'closing_balance' => 'required|numeric',
             'notes'           => 'nullable|string|max:255',
             'user_id'         => 'required|exists:users,id',
         ]);
 
         DB::beginTransaction();
+
         try {
             $closing = PaymentTerminalClosing::create([
                 'payment_terminal_opening_id' => $opening->id,
@@ -142,8 +144,8 @@ class PaymentTerminalSessionController extends Controller
                 'notes'                       => $data['notes'] ?? '',
             ]);
 
-            // Opcional: marcar terminal como cerrada
-            $opening->terminal->update(['status' => 2]);
+            // Cambiar estado de terminal → cerrada (6)
+            $opening->terminal->update(['status_id' => 6]);
 
             DB::commit();
 
@@ -154,6 +156,7 @@ class PaymentTerminalSessionController extends Controller
             ]);
         } catch (\Throwable $th) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'Error al registrar el cierre.',

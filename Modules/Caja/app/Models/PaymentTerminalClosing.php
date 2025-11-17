@@ -4,12 +4,15 @@ namespace Modules\Caja\App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\User;
+use Modules\Caja\App\Models\PaymentTerminalOpening;
+use Modules\Caja\App\Models\PaymentTerminal;
 
 class PaymentTerminalClosing extends Model
 {
     protected $table = 'payment_terminal_closing';
 
-    protected $primaryKey = 'payment_terminal_closing_id'; // según tu migración
+    protected $primaryKey = 'payment_terminal_closing_id';
 
     protected $fillable = [
         'payment_terminal_opening_id',
@@ -30,44 +33,56 @@ class PaymentTerminalClosing extends Model
     ];
 
     /**
-     * Relación: cierre pertenece a una apertura
+     * Apertura asociada
      */
     public function opening(): BelongsTo
     {
-        return $this->belongsTo(PaymentTerminalOpening::class, 'payment_terminal_opening_id');
+        return $this->belongsTo(
+            PaymentTerminalOpening::class,
+            'payment_terminal_opening_id',
+            'id'
+        );
     }
 
     /**
-     * Relación: cierre pertenece a una terminal
+     * Terminal asociada
      */
     public function terminal(): BelongsTo
     {
-        return $this->belongsTo(PaymentTerminal::class, 'payment_terminal_id');
+        return $this->belongsTo(
+            PaymentTerminal::class,
+            'payment_terminal_id',
+            'id'
+        );
     }
 
     /**
-     * Relación: cierre realizado por un usuario
+     * Cajero que realizó el cierre
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     /**
-     * Helper: diferencia entre monto esperado y real
+     * Diferencia (real - esperado)
      */
     public function getDifferenceAttribute(): float
     {
-        return (float) ($this->real_amount - $this->expected_amount);
+        return round((float)$this->real_amount - (float)$this->expected_amount, 2);
     }
 
     /**
-     * Helper: estado del cierre (por si querés mostrar en tabla)
+     * Etiqueta del estado del cierre
      */
     public function getStatusLabelAttribute(): string
     {
-        return $this->difference == 0
-            ? 'Cuadre Exacto'
-            : ($this->difference > 0 ? 'Sobrante' : 'Faltante');
+        if ($this->difference === 0.00) {
+            return 'Cuadre Exacto';
+        }
+
+        return $this->difference > 0
+            ? 'Sobrante'
+            : 'Faltante';
     }
 }

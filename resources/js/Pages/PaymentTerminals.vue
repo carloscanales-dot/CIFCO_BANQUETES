@@ -3,7 +3,6 @@ import { ref, watch, computed } from 'vue'
 import { usePage, useForm, router } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useToast } from 'vue-toastification'
-import axios from 'axios'
 
 const toast = useToast()
 const page = usePage()
@@ -23,12 +22,6 @@ const modal = ref(false)
 const isEdit = ref(false)
 const selectedTerminal = ref(null)
 const deleteDialog = ref(false)
-const toggling = ref(new Set()) // controla los switches en proceso
-
-// ✅ Helper seguro para el template
-function isToggling(id) {
-  return toggling.value.has(id)
-}
 
 // Formulario
 const form = useForm({
@@ -44,8 +37,8 @@ const headers = [
   { title: 'Nombre', key: 'terminal_name' },
   { title: 'Estación', key: 'station', sortable: false },
   { title: 'Usuario', key: 'user', sortable: false },
-  { title: 'Estado', key: 'status', sortable: false, align: 'center', width: '130px' },
-  { title: 'Acciones', key: 'actions', align: 'center', width: '120px' }
+  { title: 'Estado', key: 'status_id', sortable: false, align: 'center', width: '130px' },
+  { title: 'Acciones', key: 'actions', align: 'center', width: '120px' },
 ]
 
 // Abrir modal
@@ -71,10 +64,7 @@ function closeModal() {
 
 // Guardar o actualizar
 function submitForm() {
-  const url = form.id
-    ? `/payment-terminals/${form.id}`
-    : `/payment-terminals`
-
+  const url = form.id ? `/payment-terminals/${form.id}` : `/payment-terminals`
   const method = form.id ? 'put' : 'post'
 
   router[method](url, form, {
@@ -84,7 +74,7 @@ function submitForm() {
       closeModal()
       router.reload({ only: ['terminals'] })
     },
-    onError: () => toast.error('Verifica los campos e inténtalo nuevamente.')
+    onError: () => toast.error('Verifica los campos e inténtalo nuevamente.'),
   })
 }
 
@@ -104,36 +94,8 @@ function deleteTerminal() {
       deleteDialog.value = false
       router.reload({ only: ['terminals'] })
     },
-    onError: () => toast.error('No se pudo eliminar la terminal.')
+    onError: () => toast.error('No se pudo eliminar la terminal.'),
   })
-}
-
-// ✅ Toggle con axios (estable y reactivo)
-async function toggleStatus(item) {
-  if (toggling.value.has(item.id)) return
-
-  const originalStatus = item.status
-  const newStatus = originalStatus === 1 ? 2 : 1
-  item.status = newStatus
-  toggling.value.add(item.id)
-
-  try {
-    const token = document.querySelector('meta[name="csrf-token"]')?.content
-    if (token) axios.defaults.headers.common['X-CSRF-TOKEN'] = token
-
-    const response = await axios.post(`/payment-terminals/${item.id}/toggle-status`)
-    if (response.data?.status !== undefined) {
-      item.status = response.data.status
-    }
-
-    toast.success(`Terminal ${item.status === 1 ? 'abierta' : 'cerrada'} correctamente.`)
-  } catch (error) {
-    item.status = originalStatus
-    console.error(error)
-    toast.error('No se pudo cambiar el estado de la terminal.')
-  } finally {
-    toggling.value.delete(item.id)
-  }
 }
 
 // Paginación
@@ -162,27 +124,40 @@ function changePage(p = 1) {
         <v-divider></v-divider>
 
         <v-data-table :items="terminals.data ?? []" :headers="headers" class="elevation-0" dense>
+          <!-- Estación -->
           <template #item.station="{ item }">
             <span>{{ item.station?.station_name || 'Sin estación' }}</span>
           </template>
 
+          <!-- Usuario -->
           <template #item.user="{ item }">
             <span v-if="item.user">{{ item.user.name }}</span>
             <span v-else class="text-grey">Sin asignar</span>
           </template>
 
-          <template #item.status="{ item }">
-            <v-switch
-              :model-value="item.status === 1"
-              :disabled="isToggling(item.id)"
-              inset
-              color="green"
-              density="compact"
-              hide-details
-              @update:model-value="() => toggleStatus(item)"
-            />
+          <!-- Estado -->
+          <template #item.status_id="{ item }">
+            <v-chip size="small" :color="item.status_id === 5
+              ? 'green'
+              : item.status_id === 6
+                ? 'red'
+                : item.status_id === 7
+                  ? 'orange'
+                  : 'grey'
+              " variant="flat" text-color="white">
+              {{
+                item.status_id === 5
+                  ? 'Abierta'
+                  : item.status_id === 6
+                    ? 'Cerrada'
+                    : item.status_id === 7
+                      ? 'Pre-Cierre'
+                      : 'Desconocido'
+              }}
+            </v-chip>
           </template>
 
+          <!-- Acciones -->
           <template #item.actions="{ item }">
             <div class="action-buttons">
               <v-btn icon color="black" variant="text" density="compact" @click="openModal(item)">
@@ -194,6 +169,52 @@ function changePage(p = 1) {
             </div>
           </template>
         </v-data-table>
+        <!-- Modal Crear / Editar Terminal -->
+        <v-dialog v-model="modal" max-width="500">
+          <v-card>
+            <v-card-title class="text-h6">
+              {{ isEdit ? 'Editar Terminal' : 'Agregar Terminal' }}
+            </v-card-title>
+
+            <v-card-text>
+              <v-text-field v-model="form.terminal_name" label="Nombre de la Terminal" variant="outlined" dense
+                required />
+
+              <v-select v-model="form.station_id" :items="stations" item-title="station_name" item-value="id"
+                label="Estación" variant="outlined" dense required />
+
+              <v-select v-model="form.user_id" :items="users" item-title="name" item-value="id" label="Cajero"
+                variant="outlined" dense />
+            </v-card-text>
+
+            <v-card-actions>
+              <v-spacer />
+              <v-btn text @click="closeModal">Cancelar</v-btn>
+              <v-btn color="black" variant="elevated" @click="submitForm">
+                {{ isEdit ? 'Actualizar' : 'Crear' }}
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
+        <!-- Modal Confirmar Eliminación -->
+        <v-dialog v-model="deleteDialog" max-width="400">
+          <v-card>
+            <v-card-title class="text-h6">Confirmar Eliminación</v-card-title>
+            <v-card-text>
+              ¿Deseas eliminar la terminal
+              <strong>{{ selectedTerminal?.terminal_name }}</strong>?
+            </v-card-text>
+            <v-card-actions>
+              <v-spacer />
+              <v-btn text @click="deleteDialog = false">Cancelar</v-btn>
+              <v-btn color="red" variant="elevated" @click="deleteTerminal">
+                Eliminar
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-dialog>
+
       </v-card>
     </v-container>
   </AdminLayout>
@@ -214,15 +235,5 @@ function changePage(p = 1) {
 
 .text-grey {
   color: #9e9e9e !important;
-}
-
-.v-card-text strong {
-  font-weight: 700;
-  color: black;
-}
-
-:deep(.v-switch) {
-  scale: 0.85;
-  margin-top: -4px;
 }
 </style>

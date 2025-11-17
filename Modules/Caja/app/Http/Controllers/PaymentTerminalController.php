@@ -19,13 +19,13 @@ class PaymentTerminalController extends Controller
         $q = $request->input('q');
         $perPage = $request->input('perPage', 10);
 
-        $terminals = PaymentTerminal::with(['station', 'user'])
+        $terminals = PaymentTerminal::with(['station', 'user', 'status'])
             ->when($q, fn($query) => $query->where('terminal_name', 'like', "%{$q}%"))
             ->orderBy('id', 'desc')
             ->paginate($perPage)
             ->withQueryString();
 
-        // Feria abierta (status = 2)
+        // Feria abierta (status_id = 5 → abierta)
         $openFair = Fair::where('status', 2)->first();
 
         $stations = $openFair
@@ -53,12 +53,12 @@ class PaymentTerminalController extends Controller
             'user_id'       => 'nullable|exists:users,id',
         ]);
 
-        $data['status'] = 2; // por defecto cerrada
+        // por defecto: estado cerrado (6)
+        $data['status_id'] = 6;
 
         PaymentTerminal::create($data);
 
         return redirect()->route('payment-terminals.index');
-        //->with('success', 'Terminal creada correctamente.');
     }
 
     /**
@@ -95,12 +95,14 @@ class PaymentTerminalController extends Controller
     // Modules/Caja/Http/Controllers/PaymentTerminalController.php
     public function toggleStatus(PaymentTerminal $paymentTerminal)
     {
-        $nuevoEstado = $paymentTerminal->status == 1 ? 2 : 1;
-        $paymentTerminal->update(['status' => $nuevoEstado]);
+        // Alternar entre abierto (5) y cerrado (6)
+        $nuevoEstado = $paymentTerminal->status_id == 5 ? 6 : 5;
+
+        $paymentTerminal->update(['status_id' => $nuevoEstado]);
 
         return response()->json([
-            'success' => true,
-            'status'  => $paymentTerminal->status,
+            'success'    => true,
+            'status_id'  => $nuevoEstado,
         ]);
     }
 }

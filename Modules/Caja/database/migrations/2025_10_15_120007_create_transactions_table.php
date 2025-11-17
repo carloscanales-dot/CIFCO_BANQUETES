@@ -18,7 +18,7 @@ return new class extends Migration
             $table->decimal('amount', 10, 2);
             $table->dateTime('transaction_date')->useCurrent();
             $table->foreignId('transaction_type_id')->constrained(table: 'transaction_type', column: 'transaction_type_id')->onUpdate('cascade');
-            $table->foreignId('status_id')->constrained(table: 'status', column: 'status_id')->onUpdate('cascade');
+            $table->foreignId('status_id')->constrained(table: 'status', column: 'id')->onUpdate('cascade');
             $table->foreignId('payment_method_id')->constrained(table: 'payment_method', column: 'payment_method_id')->onUpdate('cascade');
             $table->foreignId('payment_terminal_opening_id')->constrained('payment_terminal_opening')->onUpdate('cascade');
             $table->boolean('is_refunded')->default(false);

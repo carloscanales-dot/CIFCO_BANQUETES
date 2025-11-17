@@ -4,13 +4,18 @@ namespace Modules\Caja\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Account;
+use App\Models\Status;
+use App\Models\User;
+use Modules\Ticket\Models\Station;
+use Modules\Caja\App\Models\PaymentTerminalOpening;
+use Modules\Caja\Models\TransactionType;
+use Modules\Caja\Models\PaymentMethod;
+use Modules\Ticket\Models\Employee;
 
 class Transaction extends Model
 {
     protected $table = 'transactions';
-    protected $primaryKey = 'transaction_id';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
         'station_id',
@@ -18,11 +23,11 @@ class Transaction extends Model
         'amount',
         'transaction_date',
         'transaction_type_id',
-        'transaction_status_id',
+        'status_id',
         'payment_method_id',
         'payment_terminal_opening_id',
         'is_refunded',
-        'account_id'
+        'employee_id',
     ];
 
     protected $casts = [
@@ -31,57 +36,45 @@ class Transaction extends Model
         'is_refunded' => 'boolean',
     ];
 
-    /**
-     * Relación: una transacción pertenece a una estación.
-     */
+    /** Estación */
     public function station(): BelongsTo
     {
-        return $this->belongsTo(\Modules\Ticket\Models\Station::class, 'station_id', 'station_id');
+        return $this->belongsTo(Station::class, 'station_id', 'id');
     }
 
-    /**
-     * Relación: una transacción es realizada por un usuario.
-     */
+    /** Usuario */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'user_id', 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
-    /**
-     * Relación: una transacción tiene un tipo.
-     */
+    /** Tipo de Transacción */
     public function transactionType(): BelongsTo
     {
         return $this->belongsTo(TransactionType::class, 'transaction_type_id', 'transaction_type_id');
     }
 
-    /**
-     * Relación: una transacción tiene un estado.
-     */
-    public function transactionStatus(): BelongsTo
+    /** Estado (usa tabla status real) */
+    public function status(): BelongsTo
     {
-        return $this->belongsTo(TransactionStatus::class, 'transaction_status_id', 'transaction_status_id');
+        return $this->belongsTo(Status::class, 'status_id', 'id');
     }
 
-    /**
-     * Relación: una transacción tiene un método de pago.
-     */
+    /** Método de pago */
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class, 'payment_method_id', 'payment_method_id');
     }
 
-    /**
-     * Relación: una transacción pertenece a una apertura de terminal de pago.
-     */
-    public function paymentTerminalOpening(): BelongsTo
+    /** Apertura de terminal */
+    public function opening(): BelongsTo
     {
-        return $this->belongsTo(PaymentTerminalOpening::class, 'payment_terminal_opening_id', 'payment_terminal_opening_id');
+        return $this->belongsTo(PaymentTerminalOpening::class, 'payment_terminal_opening_id', 'id');
     }
 
-
-    public function account(): HasMany
+    /** Empleado */
+    public function employee(): BelongsTo
     {
-        return $this->HasMany(Account::class, 'account_id', 'account_id');
+        return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
 }

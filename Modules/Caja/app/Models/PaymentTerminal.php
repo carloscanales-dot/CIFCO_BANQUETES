@@ -29,9 +29,9 @@ class PaymentTerminal extends Model
     ----------------------------------- */
 
     // Estado actual de la terminal (Abierta / Cerrada)
-    public function status(): BelongsTo
+    public function status()
     {
-        return $this->belongsTo(\App\Models\Status::class, 'status_id');
+        return $this->belongsTo(\App\Models\Status::class, 'status_id', 'id');
     }
 
     // Estación asociada
