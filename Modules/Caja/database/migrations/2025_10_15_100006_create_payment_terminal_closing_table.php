@@ -17,7 +17,10 @@ return new class extends Migration
             $table->foreignId('payment_terminal_id')->constrained('payment_terminal')->onUpdate('cascade');
             $table->foreignId('user_id')->constrained('users')->onUpdate('cascade');
             $table->timestamp('closing_date');
-            $table->decimal('closing_amount', 10, 2);
+            $table->decimal('expected_amount', 10, 2);
+            $table->decimal('real_amount', 10, 2);
+            $table->decimal('closing_balance', 10, 2);
+            $table->string('notes');
             $table->timestamps();
         });
     }

@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('payment_terminal', function (Blueprint $table) {
             $table->id(); // Id de terminal de pago
             $table->string('terminal_name', 65); // Nombre del terminal de pago
-            $table->boolean('status')->default(false); // Estado del terminal de pago
+            $table->foreignId('status_id')->constrained('status')->onUpdate('cascade')->default(1); // Estado del terminal de pago
             $table->foreignId('station_id')->constrained('stations')->onUpdate('cascade'); // Estación asociada
             $table->foreignId('user_id')->constrained('users')->onUpdate('cascade'); // Usuario asignado
             $table->timestamps();
