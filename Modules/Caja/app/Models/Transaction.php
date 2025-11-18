@@ -77,4 +77,9 @@ class Transaction extends Model
     {
         return $this->belongsTo(Employee::class, 'employee_id', 'employee_id');
     }
+
+    public function details()
+    {
+        return $this->hasMany(TransactionDetail::class, 'transaction_id', 'id');
+    }
 }

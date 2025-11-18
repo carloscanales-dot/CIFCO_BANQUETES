@@ -28,5 +28,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Registrar cierre (Axios)
         Route::post('/{id}/close', [PaymentTerminalSessionController::class, 'close'])->name('close');
+
+        // Exportar (generar y devolver) PDF del cierre por closingId
+        Route::get('/closing/{closingId}/export', [PaymentTerminalSessionController::class, 'exportClosing'])
+            ->name('closing.export');
     });
 });

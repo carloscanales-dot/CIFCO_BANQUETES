@@ -144,6 +144,9 @@ class PaymentTerminalSessionController extends Controller
                 'notes'                       => $data['notes'] ?? '',
             ]);
 
+            // $opening->update([
+            //     'opening_amount' => 0
+            // ]);
             // Cambiar estado de terminal → cerrada (6)
             $opening->terminal->update(['status_id' => 6]);
 
@@ -163,5 +166,87 @@ class PaymentTerminalSessionController extends Controller
                 'error'   => $th->getMessage(),
             ], 500);
         }
+    }
+
+    public function exportClosing($closingId)
+    {
+        $closing = \Modules\Caja\App\Models\PaymentTerminalClosing::with([
+            'opening.terminal.station',
+            'opening.terminal.user',
+        ])->findOrFail($closingId);
+
+        $opening = $closing->opening;
+        $terminal = $opening->terminal;
+
+        // ===============================
+        // TRANSACCIONES DE LA SESIÓN
+        // ===============================
+        $transactions = \Modules\Caja\Models\Transaction::with('paymentMethod')
+            ->where('payment_terminal_opening_id', $opening->id)
+            ->where('status_id', 1) // completada
+            ->get();
+
+        // Totales por método de pago
+        $totalCash   = $transactions->where('payment_method_id', 1)->sum('amount');
+        $totalCard   = $transactions->where('payment_method_id', 2)->sum('amount');
+        $totalChivo  = $transactions->where('payment_method_id', 3)->sum('amount');
+        $totalTransacted = $transactions->sum('amount');
+
+        // ===============================
+        // DETALLES POR PRODUCTO
+        // ===============================
+        $details = \Modules\Caja\Models\TransactionDetail::with('product')
+            ->whereIn('transaction_id', $transactions->pluck('id'))
+            ->get()
+            ->groupBy('product_id')
+            ->map(function ($group) {
+                return [
+                    'product_name' => $group->first()->product->product_name,
+                    'unit_price'   => $group->first()->unit_price,
+                    'quantity'     => $group->sum('quantity'),
+                    'total'        => $group->sum('total'),
+                ];
+            })
+            ->values();
+
+        // ===============================
+        // PREPARAR DATA
+        // ===============================
+        $data = [
+            'opening'         => $opening,
+            'closing'         => $closing,
+            'terminal'        => $terminal,
+            'station'         => $terminal->station,
+            'cashier'         => $terminal->user,
+            'totalCash'       => $totalCash,
+            'totalCard'       => $totalCard,
+            'totalChivo'      => $totalChivo,
+            'totalTransacted' => $totalTransacted,
+            'details'         => $details,
+        ];
+
+        // ===============================
+        // GENERAR PDF
+        // ===============================
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.terminal_closing', $data)
+            ->setPaper('letter', 'portrait');
+
+        // Carpeta donde se guardará
+        $directory = storage_path("app/reports/terminal_closings/");
+        if (!is_dir($directory)) {
+            mkdir($directory, 0777, true);
+        }
+
+        $filename = "cierre-terminal-" . $closing->payment_terminal_closing_id . ".pdf";
+        $filepath = $directory . $filename;
+
+        file_put_contents($filepath, $pdf->output());
+
+        // ===============================
+        // DEVOLVER DESCARGA DIRECTA
+        // ===============================
+        return response()->download($filepath, $filename, [
+            'Content-Type' => 'application/pdf',
+        ]);
     }
 }

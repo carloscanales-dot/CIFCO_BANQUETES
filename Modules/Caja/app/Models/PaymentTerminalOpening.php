@@ -80,7 +80,7 @@ class PaymentTerminalOpening extends Model
     {
         return $this->hasMany(\Modules\Caja\Models\Transaction::class, 'payment_terminal_opening_id', 'id');
     }
-    
+
     public function getTotalTransactedAttribute()
     {
         if ($this->relationLoaded('transactions')) {
@@ -88,5 +88,27 @@ class PaymentTerminalOpening extends Model
         }
 
         return (float) $this->transactions()->sum('amount');
+    }
+
+    /** Total por método de pago */
+    public function getTotalCashAttribute()
+    {
+        return $this->transactions()
+            ->where('payment_method_id', 1)
+            ->sum('amount');
+    }
+
+    public function getTotalCardAttribute()
+    {
+        return $this->transactions()
+            ->where('payment_method_id', 2)
+            ->sum('amount');
+    }
+
+    public function getTotalChivoAttribute()
+    {
+        return $this->transactions()
+            ->where('payment_method_id', 3)
+            ->sum('amount');
     }
 }
