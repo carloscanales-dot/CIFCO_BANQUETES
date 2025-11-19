@@ -1,91 +1,156 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <title>Cierre de Terminal</title>
 
-    <style>
-        body {
-            font-family: DejaVu Sans, sans-serif;
-            font-size: 12px;
-            color: #000;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .header img {
-            width: 120px;
-            margin-bottom: 10px;
-        }
-
-        h2 {
-            margin: 0;
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-        }
-
-        .section-title {
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 25px;
-            margin-bottom: 5px;
-            text-transform: uppercase;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-            margin-bottom: 15px;
-        }
-
-        th, td {
-            border: 1px solid #444;
-            padding: 6px;
-            text-align: left;
-        }
-
-        th {
-            background: #f0f0f0;
-            font-weight: bold;
-        }
-
-        .totals-table td {
-            font-weight: bold;
-        }
-
-        .text-right {
-            text-align: right;
-        }
-
-        .summary-box {
-            border: 1px solid #444;
-            padding: 10px;
-            margin-top: 15px;
-        }
-
-    </style>
 </head>
+<style>
+    body {
+        font-family: DejaVu Sans, sans-serif;
+        font-size: 12px;
+        color: #000;
+    }
+
+    /* ================================
+       ENCABEZADO SIN BORDES
+       ================================ */
+    .header-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+    .header-table td {
+        border: none !important;
+        /* Oculta bordes */
+        vertical-align: middle;
+        padding: 0px;
+    }
+
+    /* Logo izquierdo */
+    .header-left img {
+        width: 150px;
+    }
+
+    /* Texto centrado */
+    .header-center {
+        text-align: center;
+        font-weight: bold;
+        line-height: 1.3;
+    }
+
+    .header-center h2 {
+        margin: 0;
+        font-size: 17px;
+        font-weight: bold;
+    }
+
+    .header-center small {
+        font-size: 11px;
+        margin-top: 4px;
+        display: flex;
+    }
+
+    /* Logo derecho */
+    .header-right img {
+        width: 110px;
+    }
+
+    /* ================================
+       SECCIONES Y TABLAS
+       ================================ */
+
+    .section-title {
+        font-size: 14px;
+        font-weight: bold;
+        margin-top: 25px;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 8px;
+        margin-bottom: 15px;
+    }
+
+    th,
+    td {
+        border: 1px solid #444;
+        padding: 6px;
+        text-align: left;
+    }
+
+    th {
+        background: #f0f0f0;
+        font-weight: bold;
+    }
+
+    .text-right {
+        text-align: right;
+    }
+
+    .summary-box {
+        border: 1px solid #444;
+        padding: 10px;
+        margin-top: 15px;
+    }
+
+    /* ================================
+       FIRMAS
+       ================================ */
+    .signatures-table {
+        width: 100%;
+        table-layout: fixed;
+        margin-top: 50px;
+    }
+
+    .signatures-table td {
+        width: 33.33%;
+        padding-top: 60px;
+        text-align: center;
+        vertical-align: bottom;
+    }
+
+    .line {
+        border-top: 1px solid #000;
+        width: 80%;
+        margin: 0 auto;
+        padding-top: 5px;
+        font-size: 11px;
+    }
+</style>
+
 <body>
 
-    <!-- ENCABEZADO -->
-    <div class="header">
-        <!-- 👇 INSERTA AQUÍ TU LOGO -->
-        {{-- <img src="{{ public_path('ruta/a/tu/logo.png') }}" alt="Logo"> --}}
+    <table class="header-table">
+        <tr>
+            <td class="header-left">
+                <img src="{{ public_path('Logo-Cifco.png') }}" alt="Logo Cifco">
+            </td>
 
-        <h2>Cierre de Terminal</h2>
-        <small>Fecha de generación: {{ now()->format('d/m/Y H:i') }}</small>
-    </div>
+            <td class="header-center">
+                <h2>CENTRO INTERNACIONAL DE FERIAS Y CONVENCIONES</h2>
+                <h2>Cierre de Caja</h2>
+                <small>Fecha de generación: {{ now()->format('d/m/Y H:i') }}</small>
+            </td>
+
+            <td class="header-right" style="text-align: right;">
+                <img src="{{ public_path('Logo-ElSalvador.png') }}" alt="Logo El Salvador">
+            </td>
+        </tr>
+    </table>
+
+
 
     <!-- INFORMACIÓN PRINCIPAL -->
-    <div class="section-title">Información de la Terminal</div>
+    <div class="section-title">Información de la Caja</div>
     <table>
         <tr>
-            <th>Terminal</th>
+            <th>Caja</th>
             <td>{{ $terminal->terminal_name }}</td>
 
             <th>Estación</th>
@@ -140,8 +205,8 @@
         <thead>
             <tr>
                 <th>Producto</th>
-                <th class="text-right">Cant.</th>
-                <th class="text-right">P/U</th>
+                <th class="text-right">Cantidad</th>
+                <th class="text-right">Precio unitario</th>
                 <th class="text-right">Total</th>
             </tr>
         </thead>
@@ -166,9 +231,27 @@
         <p><strong>Diferencia:</strong> ${{ number_format($closing->closing_balance, 2) }}</p>
 
         @if ($closing->notes)
-        <p><strong>Observaciones:</strong> {{ $closing->notes }}</p>
+            <p><strong>Observaciones:</strong> {{ $closing->notes }}</p>
         @endif
     </div>
 
+    <!-- FIRMAS -->
+    <table class="signatures-table">
+        <tr>
+            <td>
+                <div class="line">Cajero</div>
+            </td>
+
+            <td>
+                <div class="line">Encargado de Cajas</div>
+            </td>
+
+            <td>
+                <div class="line">Jefe</div>
+            </td>
+        </tr>
+    </table>
+
 </body>
+
 </html>

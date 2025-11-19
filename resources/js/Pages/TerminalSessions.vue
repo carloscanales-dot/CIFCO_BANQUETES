@@ -175,9 +175,7 @@ function exportClosing(item) {
                         </v-btn>
 
                     </template>
-
                 </v-data-table>
-
             </v-card>
 
             <v-dialog v-model="dialog" max-width="420">
