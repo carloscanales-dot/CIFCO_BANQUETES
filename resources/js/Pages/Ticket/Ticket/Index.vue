@@ -61,7 +61,16 @@ const applyFilter = () => {
 
 const genSubmit = () => {
   generateDialog.value = false
+
+  // 👇 Vuelve a cargar los datos del backend
+  ticketStore.index({
+    page: 1,
+    limit: 10,
+    sort: { key: 'ticket_id', order: 'desc' },
+    search: helpers.removeEmptyAttribute(filterForm),
+  })
 }
+
 
 onMounted(() => {
   productStore.ajaxList('Activo')
@@ -164,6 +173,7 @@ export default {
         { title: 'Producto', key: 'product_name' },
         { title: 'UUID', key: 'uuid' },
         { title: 'Precio', key: 'unit_price' },
+        { title: 'Generado para', key: 'generated_for' },
         { title: 'Estatus', key: 'status' },
         { title: 'Acción', key: 'action', sortable: false },
       ],

@@ -14,9 +14,10 @@ export const useTicketStore = defineStore('ticketStore', () => {
   const isLoading = ref(false)
 
   const form = useForm({
-    status: 'D',
+    status: 1,
     quantity: null,
     product_id: null,
+    generated_for: null,
   })
 
   const redirect = () => {

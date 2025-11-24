@@ -156,7 +156,7 @@ class StationController extends Controller
         return response()->json([
             'message' => sprintf('La estación %s ha sido eliminada exitosamente.', $stationName),
         ]);
-        //return redirect()->back()->with('success', $message);  
+        //return redirect()->back()->with('success', $message);
     }
 
     private function getStationById($station_id)
@@ -171,7 +171,7 @@ class StationController extends Controller
 
         return [
             'station_name' => $request->get('station_name'),
-            'status' => $request->get('status') === 'Activa' ? true : false,
+            'status' => $request->get('status') == 1,
             'fair_id' => $request->get('fair_id'),
             'location_id' => $request->get('location_id'),
             'created_at' => $current_date,

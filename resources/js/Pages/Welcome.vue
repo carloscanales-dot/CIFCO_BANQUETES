@@ -14,7 +14,7 @@ const props = defineProps({
 <template>
   <Head title="Welcome" />
   <v-app>
-    <v-main style="background: url('/fondo1.jpg') center center / cover no-repeat;">
+    <v-main style="background: url('/fondo-lr.jpeg') center center / cover no-repeat;">
       <v-container fill-height>
         <v-row align="center" justify="center" style="height: 100vh;">
           <v-col cols="12" sm="12" md="10" lg="4">
@@ -34,8 +34,8 @@ const props = defineProps({
 
               <v-card-actions class="justify-center">
                 <div v-if="props.auth.user != null">
-                  <Link href="/dashboard" as="div">
-                    <v-btn color="primary">Dashboard</v-btn>
+                  <Link href="/landing" as="div">
+                    <v-btn color="primary">Menu</v-btn>
                   </Link>
                 </div>
                 <div v-else>

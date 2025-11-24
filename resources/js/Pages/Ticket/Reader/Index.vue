@@ -1,6 +1,7 @@
 <script setup>
 import { storeToRefs } from 'pinia'
 import { Head } from '@inertiajs/vue3'
+import { computed } from 'vue'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import ScannerCodeQR from '@/Components/ScannerCodeQR.vue'
 import { useQrStore } from '@/Stores/Ticket/qrStore'
@@ -15,39 +16,133 @@ const onScanResult = async (decodeText) => {
 const submit = () => {
   qrStore.store()
 }
+
+// ===============================
+//  COMPUTED para manejar los 3 modales
+// ===============================
+
+const modalDisponible = computed({
+  get: () => form.value.status === 1,
+  set: (val) => {
+    if (!val) qrStore.reset()
+  }
+})
+
+const modalNoDisponible = computed({
+  get: () => form.value.status === 0,
+  set: (val) => {
+    if (!val) qrStore.reset()
+  }
+})
+
+const modalExito = computed({
+  get: () => form.value.status === 2,
+  set: (val) => {
+    if (!val) qrStore.reset()
+  }
+})
 </script>
+
 <template>
   <Head title="Lector-QR" />
+
   <AuthenticatedLayout>
-    <VCard title="Escaneo de codigos">
+    <VCard title="Escaneo de códigos">
       <VCardText>
-        <ScannerCodeQR :fps="10" :qrbox="150" :reader-on="true" @result="onScanResult"></ScannerCodeQR>
-      </VCardText>
-      <VCardText>
-        <VForm @submit.prevent="submit">
-          <VRow dense>
-            <VCol cols="12" md="12" sm="12">
-              <v-banner v-if="form.status === 1" color="info" icon="$info" :text="alert" stacked>
-                <template v-slot:actions>
-                  <VBtn
-                    prepend-icon="mdi-database"
-                    type="submit"
-                    text="Canjear"
-                    variant="tonal"
-                    color="primary"
-                    :disabled="form.processing"
-                  ></VBtn>
-                </template>
-              </v-banner>
-              <v-banner v-else-if="form.status === 'C'" color="warning" icon="$warning" :text="alert" stacked>
-              </v-banner>
-              <v-banner v-else-if="form.status === 'A'" color="error" icon="$error" :text="alert" stacked> </v-banner>
-              <v-banner v-else-if="form.status === 'S'" color="success" icon="$success" :text="alert" stacked>
-              </v-banner>
-            </VCol>
-          </VRow>
-        </VForm>
+        <ScannerCodeQR
+          :fps="10"
+          :qrbox="150"
+          :reader-on="form.status === null"
+          @result="onScanResult"
+        />
       </VCardText>
     </VCard>
+
+    <!-- ==========================
+         MODAL — TICKET DISPONIBLE
+    ============================ -->
+    <VDialog v-model="modalDisponible" persistent max-width="450">
+      <VCard>
+        <VCardTitle class="text-info text-h6">
+          Ticket disponible
+        </VCardTitle>
+
+        <VCardText>
+          {{ alert }}
+        </VCardText>
+
+        <VCardActions>
+          <VSpacer />
+          <VBtn
+            color="primary"
+            variant="tonal"
+            prepend-icon="mdi-database"
+            :loading="isLoading"
+            @click="submit"
+          >
+            Canjear
+          </VBtn>
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            @click="modalDisponible = false"
+          >
+            Cerrar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- ==========================
+         MODAL — YA CANJEADO (NO DISPONIBLE)
+    ============================ -->
+    <VDialog v-model="modalNoDisponible" persistent max-width="450">
+      <VCard>
+        <VCardTitle class="text-error text-h6">
+          Ticket no disponible
+        </VCardTitle>
+
+        <VCardText>
+          {{ alert }}
+        </VCardText>
+
+        <VCardActions>
+          <VSpacer />
+          <VBtn
+            color="secondary"
+            variant="tonal"
+            @click="modalNoDisponible = false"
+          >
+            Cerrar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- ==========================
+         MODAL — CANJE EXITOSO
+    ============================ -->
+    <VDialog v-model="modalExito" persistent max-width="450">
+      <VCard>
+        <VCardTitle class="text-success text-h6">
+          ¡Canje exitoso!
+        </VCardTitle>
+
+        <VCardText>
+          {{ alert }}
+        </VCardText>
+
+        <VCardActions>
+          <VSpacer />
+          <VBtn
+            color="success"
+            variant="tonal"
+            @click="modalExito = false"
+          >
+            Aceptar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
   </AuthenticatedLayout>
 </template>

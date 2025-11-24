@@ -17,6 +17,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('status')->default(1); // Estado del ticket
             $table->foreignId('product_id')->constrained('products')->onUpdate('cascade'); // Producto canjeado
             $table->timestamp('redeem_date')->nullable(); // Fecha de canje (nullable si aún no se ha canjeado)
+            $table->string('generated_for')->nullable();
             $table->timestamps();
         });
     }
