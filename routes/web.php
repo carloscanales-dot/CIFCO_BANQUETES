@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\UserManagementController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PrinterController;
+use App\Http\Controllers\AnalyticsController;
+
 use Inertia\Inertia;
 
 /*
@@ -44,6 +46,12 @@ Route::get('/Administrar', [DashboardController::class, 'administrar'])
     ->name('administrar');
 
 Route::get('/dashboard/charts', [DashboardController::class, 'charts']);
+// Datos para el módulo de Tickets (Dashboard)
+Route::get('/dashboard/tickets-data', [\App\Http\Controllers\AnalyticsController::class, 'ticketsData'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.tickets.data');
+
+
 Route::get('/ventas', [DashboardController::class, 'ventas'])->name('ventas');
 Route::get('/creditos', [DashboardController::class, 'creditos'])->name('creditos');
 

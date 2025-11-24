@@ -2,14 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\Printer;
 use Illuminate\Support\Facades\Auth;
-use Modules\Ticket\Models\Station;
-
-
+use App\Models\User;
 
 class DashboardController extends Controller
 {
@@ -31,6 +28,7 @@ class DashboardController extends Controller
 
     public function ventas()
     {
+        /** @var \App\Models\User $user */
         $user = Auth::user();
 
         // Obtener la estación asignada (la primera, por si tuviera más de una)
@@ -57,7 +55,8 @@ class DashboardController extends Controller
 
     public function creditos()
     {
-       $user = Auth::user();
+        /** @var \App\Models\User $user */
+        $user = Auth::user();
 
         // Obtener la estación asignada (la primera, por si tuviera más de una)
         $station = $user->stations()->first();
@@ -91,23 +90,23 @@ class DashboardController extends Controller
     {
         $data = DB::table('v_station_tickets')->get();
 
-        // 🎯 Tickets por estación (cantidad)
+        // Tickets por estación (cantidad)
         $barData = $data->groupBy('station_name')->map(function ($group, $station) {
             return ['label' => $station, 'value' => $group->count()];
         })->values();
 
-        // 🎯 Tickets por producto (distribución)
+        // Tickets por producto (distribución)
         $pieData = $data->groupBy('product_name')->map(function ($group, $product) {
             return ['label' => $product, 'value' => $group->count()];
         })->values();
 
-        // 💰 Ganancias por estación
+        // Ganancias por estación
         $gainsByStation = $data->groupBy('station_name')->map(function ($group, $station) {
             $total = $group->sum('unit_price');
             return ['label' => $station, 'value' => round($total, 2)];
         })->values();
 
-        // 📅 Ganancias por día (formateado por fecha)
+        // Ganancias por día (formateado por fecha)
         $gainsByDate = $data->groupBy(fn($item) => \Carbon\Carbon::parse($item->created_at)->format('Y-m-d'))
             ->map(function ($group, $date) {
                 $total = $group->sum('unit_price');
