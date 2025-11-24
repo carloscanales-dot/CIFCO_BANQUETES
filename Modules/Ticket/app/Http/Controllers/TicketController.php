@@ -37,7 +37,7 @@ class TicketController extends Controller
         });
 
         $result = $query
-            ->select('ticket_id', 'uuid', 'product_name', 'unit_price', 'status')
+            ->select('ticket_id', 'uuid', 'product_name', 'unit_price', 'status', 'generated_for')
             ->paginate($request->get('limit', 10));
 
         if ($request->expectsJson()) {
@@ -117,13 +117,13 @@ class TicketController extends Controller
         $user = Auth::user();
         $stationUser = DB::table('station_users')->where('user_id', $user->id)->first();
 
-        if (!$stationUser) {
-            throw new HttpResponseException(response()->json([
-                'message' => 'User is not associated with a station.'
-            ], 403));
-        }
+        // if (!$stationUser) {
+        //     throw new HttpResponseException(response()->json([
+        //         'message' => 'User is not associated with a station.'
+        //     ], 403));
+        // }
 
-        $station_id = $stationUser->station_id;
+        // $station_id = $stationUser->station_id;
 
         $inserts = [];
         $current_date = $this->getCurrentDate()->format('Y-m-d H.i:s');
@@ -135,6 +135,7 @@ class TicketController extends Controller
                 'uuid' => implode('-', [$prefix, $max_product_id]),
                 'status' => $request->get('status'),
                 'product_id' => $request->get('product_id'),
+                'generated_for' => $request->get('generated_for'),
                 'created_at' => $current_date,
                 'updated_at' => $current_date
 

@@ -66,7 +66,35 @@ class ReaderController extends Controller
             ], 403));
         }
 
-        $dataStore = $this->setDataStore($request, $station->station_id);
+        // ================================
+        // 🔥 VALIDAR QUE LA ESTACIÓN TENGA EL PRODUCTO
+        // ================================
+        $ticket = DB::table('tickets')
+            ->where('id', $request->get('ticket_id'))
+            ->first();
+
+        if (!$ticket) {
+            return response()->json([
+                'message' => 'El ticket no existe.'
+            ], 404);
+        }
+
+        $productId = $ticket->product_id;
+        $stationId = $station->station_id;
+
+        $hasProduct = DB::table('station_products')
+            ->where('station_id', $stationId)
+            ->where('product_id', $productId)
+            ->exists();
+
+        if (!$hasProduct) {
+            return response()->json([
+                'message' => 'Este producto NO está asignado a la estación donde estás trabajando.'
+            ], 403);
+        }
+        // ================================
+
+        $dataStore = $this->setDataStore($request, $stationId);
 
         DB::transaction(function () use ($dataStore) {
             $stationTicketId = DB::table('station_tickets')->insertGetId($dataStore);
@@ -79,6 +107,7 @@ class ReaderController extends Controller
             }
         });
     }
+
 
     public function ticketPdf(Request $request)
     {

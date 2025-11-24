@@ -13,7 +13,8 @@ export const useQrStore = defineStore('qrStore', () => {
   const form = useForm({
     ticket_id: null,
     status: null,
-    uuid: null
+    uuid: null,
+    product_name: null,
   })
 
   const validate = async (uuid) => {
@@ -22,7 +23,10 @@ export const useQrStore = defineStore('qrStore', () => {
     try {
       const response = await window.axios.get(`${api_url}/ticket/${uuid}`)
       const { success, message, ticket } = response.data
-      Object.assign(form, ticket)
+
+      // 🔥 IMPORTANTE: asignar a form.data()
+      Object.assign(form.data(), ticket)
+
       alert.value = message
     } catch (error) {
       toast.error(error.message)
@@ -31,23 +35,33 @@ export const useQrStore = defineStore('qrStore', () => {
     }
   }
 
-  const store = () => {
+  const store = async () => {
     isLoading.value = true
 
-    form.post(`${api_url}/store`, {
-      preserveState: true,
-      preserveScroll: true,
-      onSuccess: () => {
-        form.status = 0
-        alert.value = `El producto ${form.product_name}, ha sido CANJEADO exitosamente.`
-      },
-      onError: (error) => {
-        toast.error(error.message)
-      },
-      onFinish: () => {
-        isLoading.value = false
+    try {
+      const response = await window.axios.post(`${api_url}/store`, form.data())
+
+      // ⛳ Ahora sí el modal exito aparece
+      form.status = 2
+      alert.value = `El producto ${form.product_name}, ha sido CANJEADO exitosamente.`
+
+    } catch (error) {
+      if (error.response && error.response.status === 403) {
+        toast.error(error.response.data.message)
+      } else {
+        toast.error("Error inesperado al canjear el ticket.")
       }
-    })
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const reset = () => {
+    form.ticket_id = null
+    form.status = null
+    form.uuid = null
+    form.product_name = null
+    alert.value = null
   }
 
   return {
@@ -56,6 +70,6 @@ export const useQrStore = defineStore('qrStore', () => {
     isLoading,
     validate,
     store,
+    reset,
   }
-
 })

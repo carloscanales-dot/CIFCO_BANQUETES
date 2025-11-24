@@ -6,17 +6,11 @@ import { Link } from '@inertiajs/vue3'
 
 <template>
   <v-app class="bg-grey-lighten-4">
-    <v-main style="background: url('/fondo1.jpg') center center / cover no-repeat;">
+    <v-main style="background: url('/fondo-lr.jpeg') center center / cover no-repeat;">
       <v-container fluid>
         <v-row align="center" justify="center" style="height: 100vh">
           <v-col cols="12" sm="12" md="10" lg="3">
 
-            <!-- Logo fuera de la card -->
-            <div class="d-flex justify-center">
-              <Link href="/" as="div">
-                <CifcoLogo style="height: 75px;" />
-              </Link>
-            </div>
 
             <!-- Card con logo centrado -->
             <v-card class="px-6 py-4 mt-3 elevation-2 rounded-lg">

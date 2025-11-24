@@ -23,6 +23,7 @@ class TicketRequest extends FormRequest
         return [
             'product_id' => 'required',
             'quantity' => 'required|numeric|gt:0',
+            'generated_for' => 'nullable|string|max:255',
             'status' => 'required'
         ];
     }

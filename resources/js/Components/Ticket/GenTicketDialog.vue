@@ -73,6 +73,16 @@ const submit = async () => {
               ></VSelect>
             </VCol>
           </VRow>
+          <VRow>
+            <VCol cols="12" md="12" sm="12">
+              <VTextField
+                v-model="ticketStore.form.generated_for"
+                label="Generado para"
+                clearable
+                :error-messages="ticketStore.errors.generated_for"
+              />
+            </VCol>
+          </VRow>
         </VCardText>
         <VCardActions>
           <VBtn

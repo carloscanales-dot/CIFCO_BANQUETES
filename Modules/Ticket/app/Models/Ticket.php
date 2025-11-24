@@ -14,6 +14,7 @@ class Ticket extends Model
         'uuid',
         'status',
         'product_id',
+        'generated_for',
         'redeem_date',
     ];
 
