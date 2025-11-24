@@ -22,7 +22,7 @@ class PaymentTerminalSessionController extends Controller
         $q = $request->input('q');
         $perPage = $request->input('perPage', 10);
 
-        // Feria activa (status_id = 2 → activa según tu arquitectura)
+        // Feria activa
         $openFair = \Modules\Ticket\Models\Fair::where('status', 2)->first();
 
         if (!$openFair) {
@@ -33,32 +33,48 @@ class PaymentTerminalSessionController extends Controller
             ]);
         }
 
-        // Estaciones de la feria activa
+        // Estaciones
         $stationIds = $openFair->stations()->pluck('id');
 
-        // Terminales de esas estaciones
+        // Terminales
         $terminals = PaymentTerminal::with([
             'station',
             'user',
             'openings' => function ($q) {
                 $q->with([
                     'closing',
-                    'transactions' //Cargar transacciones de la sesión
+                    'transactions'
                 ])
                     ->orderByDesc('opening_date')
                     ->limit(1);
             }
-
         ])
             ->whereIn('station_id', $stationIds)
-            ->when(
-                $q,
-                fn($query) =>
-                $query->where('terminal_name', 'like', "%{$q}%")
-            )
+            ->when($q, fn($query) => $query->where('terminal_name', 'like', "%{$q}%"))
             ->orderBy('id', 'desc')
             ->paginate($perPage)
             ->withQueryString();
+
+        // ===========================
+        // ➕ AÑADIR TOTALES A CADA APERTURA
+        // ===========================
+        $terminals->getCollection()->transform(function ($terminal) {
+
+            $opening = $terminal->openings->first();
+
+            if ($opening) {
+                $transactions = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
+                    ->where('status_id', 1)
+                    ->get();
+
+                $opening->total_cash       = $transactions->where('payment_method_id', 1)->sum('amount');
+                $opening->total_card       = $transactions->where('payment_method_id', 2)->sum('amount');
+                $opening->total_chivo      = $transactions->where('payment_method_id', 3)->sum('amount');
+                $opening->total_transacted = $transactions->sum('amount');
+            }
+
+            return $terminal;
+        });
 
         return Inertia::render('TerminalSessions', [
             'terminals' => $terminals,
