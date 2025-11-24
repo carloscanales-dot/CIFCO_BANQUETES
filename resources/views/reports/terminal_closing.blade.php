@@ -9,8 +9,9 @@
 <style>
     body {
         font-family: DejaVu Sans, sans-serif;
-        font-size: 12px;
+        font-size: 11px;
         color: #000;
+        margin: 15px;
     }
 
     /* ================================
@@ -19,69 +20,62 @@
     .header-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 20px;
+        margin-bottom: 10px;
     }
 
     .header-table td {
         border: none !important;
-        /* Oculta bordes */
         vertical-align: middle;
-        padding: 0px;
+        padding: 0;
     }
 
-    /* Logo izquierdo */
     .header-left img {
-        width: 150px;
+        width: 130px;
     }
 
-    /* Texto centrado */
     .header-center {
         text-align: center;
         font-weight: bold;
-        line-height: 1.3;
+        line-height: 1.2;
     }
 
     .header-center h2 {
         margin: 0;
-        font-size: 17px;
+        font-size: 15px;
         font-weight: bold;
     }
 
     .header-center small {
-        font-size: 11px;
-        margin-top: 4px;
-        display: flex;
+        font-size: 10px;
+        margin-top: 2px;
     }
 
-    /* Logo derecho */
     .header-right img {
-        width: 110px;
+        width: 95px;
     }
 
     /* ================================
-       SECCIONES Y TABLAS
+       SECCIONES
        ================================ */
-
     .section-title {
-        font-size: 14px;
+        font-size: 12px;
         font-weight: bold;
-        margin-top: 25px;
-        margin-bottom: 5px;
+        margin: 12px 0 4px 0;
         text-transform: uppercase;
     }
 
     table {
         width: 100%;
         border-collapse: collapse;
-        margin-top: 8px;
-        margin-bottom: 15px;
+        margin-top: 4px;
+        margin-bottom: 10px;
     }
 
     th,
     td {
         border: 1px solid #444;
-        padding: 6px;
-        text-align: left;
+        padding: 4px 5px;
+        font-size: 11px;
     }
 
     th {
@@ -93,10 +87,15 @@
         text-align: right;
     }
 
+    /* ================================
+       RESUMEN BOX
+       ================================ */
     .summary-box {
         border: 1px solid #444;
-        padding: 10px;
-        margin-top: 15px;
+        padding: 8px;
+        margin-top: 10px;
+        font-size: 11px;
+        line-height: 1.3;
     }
 
     /* ================================
@@ -105,24 +104,25 @@
     .signatures-table {
         width: 100%;
         table-layout: fixed;
-        margin-top: 50px;
+        margin-top: 30px;
     }
 
     .signatures-table td {
         width: 33.33%;
-        padding-top: 60px;
+        padding-top: 40px;
         text-align: center;
         vertical-align: bottom;
     }
 
     .line {
         border-top: 1px solid #000;
-        width: 80%;
+        width: 75%;
         margin: 0 auto;
-        padding-top: 5px;
-        font-size: 11px;
+        padding-top: 3px;
+        font-size: 10px;
     }
 </style>
+
 
 <body>
 
@@ -133,9 +133,11 @@
             </td>
 
             <td class="header-center">
-                <h2>CENTRO INTERNACIONAL DE FERIAS Y CONVENCIONES</h2>
-                <h2>Cierre de Caja</h2>
-                <small>Fecha de generación: {{ now()->format('d/m/Y H:i') }}</small>
+                <h2>CENTRO INTERNACIONAL DE FERIAS Y CONVENCIONES DE EL SALVADOR</h2>
+                <h2>Acta de cierre de caja</h2>
+                <div style="font-size:14px; margin-top:4px;">
+                    <strong>{{ $station->fair->fair_name ?? '' }}</strong>
+                </div>
             </td>
 
             <td class="header-right" style="text-align: right;">
@@ -147,7 +149,7 @@
 
 
     <!-- INFORMACIÓN PRINCIPAL -->
-    <div class="section-title">Información de la Caja</div>
+    <div class="section-title">Información General</div>
     <table>
         <tr>
             <th>Caja</th>
@@ -174,8 +176,33 @@
         </tr>
     </table>
 
+    <!-- DETALLES DE PRODUCTOS -->
+    <div class="section-title">Detalle de Productos Vendidos</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th class="text-right">Total de la venta</th>
+                <th class="text-right">Precio unitario</th>
+                <th class="text-right">Total</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            @foreach ($details as $item)
+                <tr>
+                    <td>{{ $item['product_name'] }}</td>
+                    <td class="text-right">{{ $item['quantity'] }}</td>
+                    <td class="text-right">${{ number_format($item['unit_price'], 2) }}</td>
+                    <td class="text-right">${{ number_format($item['total'], 2) }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
+
+
     <!-- TOTALES POR MÉTODO DE PAGO -->
-    <div class="section-title">Totales por Método de Pago</div>
+    <div class="section-title">Detalles de métodos de pago</div>
     <table class="totals-table">
         <tr>
             <th>Método</th>
@@ -199,29 +226,6 @@
         </tr>
     </table>
 
-    <!-- DETALLES DE PRODUCTOS -->
-    <div class="section-title">Detalle de Productos Vendidos</div>
-    <table>
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th class="text-right">Cantidad</th>
-                <th class="text-right">Precio unitario</th>
-                <th class="text-right">Total</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach ($details as $item)
-                <tr>
-                    <td>{{ $item['product_name'] }}</td>
-                    <td class="text-right">{{ $item['quantity'] }}</td>
-                    <td class="text-right">${{ number_format($item['unit_price'], 2) }}</td>
-                    <td class="text-right">${{ number_format($item['total'], 2) }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
 
     <!-- RESUMEN DEL CIERRE -->
     <div class="section-title">Resumen del Cierre</div>
@@ -239,18 +243,25 @@
     <table class="signatures-table">
         <tr>
             <td>
-                <div class="line">Cajero</div>
+                <div class="line"></div>
+                <div style="margin-top: 5px; font-size: 11px;">Nombre y firma</div>
+                <div style="font-size: 11px; margin-top: 2px;">Cajero/a</div>
             </td>
 
             <td>
-                <div class="line">Encargado de Cajas</div>
+                <div class="line"></div>
+                <div style="margin-top: 5px; font-size: 11px;">Nombre y firma</div>
+                <div style="font-size: 11px; margin-top: 2px;">Supervisor de Cajas</div>
             </td>
 
             <td>
-                <div class="line">Jefe</div>
+                <div class="line"></div>
+                <div style="margin-top: 5px; font-size: 11px;">Nombre y firma</div>
+                <div style="font-size: 11px; margin-top: 2px;">Oficial de colecturía</div>
             </td>
         </tr>
     </table>
+
 
 </body>
 
