@@ -16,6 +16,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{paymentTerminal}', [PaymentTerminalController::class, 'update'])->name('update');
         Route::delete('/{paymentTerminal}', [PaymentTerminalController::class, 'destroy'])->name('destroy');
         Route::post('/{paymentTerminal}/toggle-status', [PaymentTerminalController::class, 'toggleStatus'])->name('toggle-status');
+        Route::get('/{paymentTerminal}/status', [PaymentTerminalController::class, 'getStatus'])->name('status');
     });
 
     // 🔹 Rutas para Aperturas y Cierres de Terminales

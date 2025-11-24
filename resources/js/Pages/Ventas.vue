@@ -1,60 +1,81 @@
 <template>
     <Head title="Ventas" />
     <CajaLayout>
-        <v-row>
-            <v-col cols="12" md="4">
-                <v-card>
-                    <v-card-title>Detalle de Venta</v-card-title>
-                    <v-list>
-                        <v-list-item v-for="item in cart.cartItems" :key="item.product_id">
-                            <v-list-item-title>{{ item.product_name }}</v-list-item-title>
-                            <v-list-item-subtitle>
-                                {{ item.quantity }} x ${{ item.unit_price.toFixed(2) }} = ${{ (item.quantity *
-                                item.unit_price).toFixed(2) }}
-                            </v-list-item-subtitle>
-                            <template v-slot:append>
-                                <v-btn icon size="small" @click="cart.incrementItem(item.product_id)" color="green">
-                                    <v-icon>mdi-plus</v-icon>
-                                </v-btn>
-                                <v-btn icon size="small" @click="cart.decrementItem(item.product_id)" color="red">
-                                    <v-icon>mdi-minus</v-icon>
-                                </v-btn>
-                            </template>
-                        </v-list-item>
-                    </v-list>
-                    <v-divider></v-divider>
-                    <v-card-text>
-                        <div class="d-flex justify-space-between">
-                            <span>Subtotal</span>
-                            <span>${{ cart.cartTotal.toFixed(2) }}</span>
-                        </div>
-                        <div class="d-flex justify-space-between font-weight-bold">
-                            <span>Total</span>
-                            <span>${{ cart.cartTotal.toFixed(2) }}</span>
-                        </div>
-                    </v-card-text>
-                    <v-card-actions>
-                        <v-btn color="primary" block @click="abrirModalPago">Pagar</v-btn>
-                    </v-card-actions>
-                </v-card>
-            </v-col>
-            <v-col cols="12" md="8">
-                <v-row>
-                    <v-col v-for="product in products" :key="product.product_id" cols="6" sm="4" lg="3">
-                        <v-card @click="cart.addItem(product)" style="background-color: #32385d; color: white;"
-                            theme="dark" class="text-center" height="180px" fill-height>
-                            <v-card-text class="d-flex flex-column align-center justify-center fill-height">
-                                <div>
-                                    <v-icon size="x-large">{{ product.icon }}</v-icon>
-                                </div>
-                                <div class="text-subtitle-1 my-2">{{ product.product_name }}</div>
-                                <div>${{ product.unit_price.toFixed(2) }}</div>
-                            </v-card-text>
-                        </v-card>
-                    </v-col>
-                </v-row>
-            </v-col>
-        </v-row>
+        <div v-if="props.terminal_status === 6">
+            <v-card
+                color="error"
+                border="start"
+                elevation="2"
+            >
+                <v-card-title class="text-h5 font-weight-bold">
+                    CAJA CERRADA
+                </v-card-title>
+                <v-card-text class="text-subtitle-1">
+                    No se pueden realizar ventas en esta terminal porque está cerrada.
+                </v-card-text>
+            </v-card>
+        </div>
+        <div v-else>
+            <v-row class="mb-2">
+                <v-col cols="12" class="d-flex justify-end">
+                    <v-btn color="secondary">Pre-cierre</v-btn>
+                </v-col>
+            </v-row>
+            <v-row>
+                <v-col cols="12" md="4">
+                    <v-card>
+                        <v-card-title>Detalle de Venta</v-card-title>
+                        <v-list>
+                            <v-list-item v-for="item in cart.cartItems" :key="item.product_id">
+                                <v-list-item-title>{{ item.product_name }}</v-list-item-title>
+                                <v-list-item-subtitle>
+                                    {{ item.quantity }} x ${{ item.unit_price.toFixed(2) }} = ${{ (item.quantity *
+                                    item.unit_price).toFixed(2) }}
+                                </v-list-item-subtitle>
+                                <template v-slot:append>
+                                    <v-btn icon size="small" @click="cart.incrementItem(item.product_id)" color="green">
+                                        <v-icon>mdi-plus</v-icon>
+                                    </v-btn>
+                                    <v-btn icon size="small" @click="cart.decrementItem(item.product_id)" color="red">
+                                        <v-icon>mdi-minus</v-icon>
+                                    </v-btn>
+                                </template>
+                            </v-list-item>
+                        </v-list>
+                        <v-divider></v-divider>
+                        <v-card-text>
+                            <div class="d-flex justify-space-between">
+                                <span>Subtotal</span>
+                                <span>${{ cart.cartTotal.toFixed(2) }}</span>
+                            </div>
+                            <div class="d-flex justify-space-between font-weight-bold">
+                                <span>Total</span>
+                                <span>${{ cart.cartTotal.toFixed(2) }}</span>
+                            </div>
+                        </v-card-text>
+                        <v-card-actions>
+                            <v-btn color="primary" block @click="abrirModalPago">Pagar</v-btn>
+                        </v-card-actions>
+                    </v-card>
+                </v-col>
+                <v-col cols="12" md="8">
+                    <v-row>
+                        <v-col v-for="product in products" :key="product.product_id" cols="6" sm="4" lg="3">
+                            <v-card @click="cart.addItem(product)" style="background-color: #32385d; color: white;"
+                                theme="dark" class="text-center" height="180px" fill-height>
+                                <v-card-text class="d-flex flex-column align-center justify-center fill-height">
+                                    <div>
+                                        <v-icon size="x-large">{{ product.icon }}</v-icon>
+                                    </div>
+                                    <div class="text-subtitle-1 my-2">{{ product.product_name }}</div>
+                                    <div>${{ product.unit_price.toFixed(2) }}</div>
+                                </v-card-text>
+                            </v-card>
+                        </v-col>
+                    </v-row>
+                </v-col>
+            </v-row>
+        </div>
     </CajaLayout>
 
     <v-dialog v-model="showPaymentModal" width="450" persistent>
@@ -87,7 +108,7 @@
     </v-card-text>
 
     <v-card-actions>
-      <v-btn variant="text" @click="showPaymentModal = false; resetModalPago()">Cancelar</v-btn>
+      <v-btn variant="text" @click="cancelarPago">Cancelar</v-btn>
       <v-btn color="primary" @click="confirmarPago">Confirmar Pago</v-btn>
     </v-card-actions>
   </v-card>
@@ -109,7 +130,8 @@ const pedidoCounter = ref(1);
 
 const props = defineProps({
     printer_ip: String,
-    station_name: String
+    station_name: String,
+    terminal_status: Number
 })
 
 let epos = null;

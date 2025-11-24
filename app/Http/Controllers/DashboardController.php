@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\Printer;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use Modules\Caja\App\Models\PaymentTerminal;
 
 class DashboardController extends Controller
 {
@@ -31,6 +32,9 @@ class DashboardController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
+        // buscar la terminal de pago asignada al usuario
+        $paymentTerminal = PaymentTerminal::where('user_id', $user->id)->first();
+
         // Obtener la estación asignada (la primera, por si tuviera más de una)
         $station = $user->stations()->first();
 
@@ -39,6 +43,8 @@ class DashboardController extends Controller
             return Inertia::render('Ventas', [
                 'printer_ip' => null,
                 'station_name' => null,
+                'terminal_status' => $paymentTerminal?->status_id,
+                'payment_terminal_id' => $paymentTerminal?->id,
             ]);
         }
 
@@ -50,6 +56,8 @@ class DashboardController extends Controller
         return Inertia::render('Ventas', [
             'printer_ip' => $printer?->ip_adress ?? null,
             'station_name' => $station->station_name,
+            'terminal_status' => $paymentTerminal?->status_id,
+            'payment_terminal_id' => $paymentTerminal?->id,
         ]);
     }
 

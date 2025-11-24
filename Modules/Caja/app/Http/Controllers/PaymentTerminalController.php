@@ -105,4 +105,14 @@ class PaymentTerminalController extends Controller
             'status_id'  => $nuevoEstado,
         ]);
     }
+
+    /**
+     * Obtener el estado de una terminal
+     */
+    public function getStatus(PaymentTerminal $paymentTerminal)
+    {
+        return response()->json([
+            'status_id' => $paymentTerminal->status_id,
+        ]);
+    }
 }
