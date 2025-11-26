@@ -12,7 +12,7 @@ const terminals = computed(() => page.props.terminals?.data ?? [])
 
 // Modal
 const dialog = ref(false)
-const modalMode = ref('open') // 'open' | 'close'
+const modalMode = ref('open')
 const selectedTerminal = ref(null)
 
 // Campos apertura
@@ -21,17 +21,6 @@ const openingAmount = ref(0)
 // Campos cierre
 const closingReal = ref(0)
 const closingNotes = ref('')
-
-// Monto esperado = apertura + total_cash
-const expectedAmount = computed(() => {
-    const opening = selectedTerminal.value?.openings?.[0]
-    if (!opening) return 0
-
-    const openingAmount = opening.opening_amount ?? 0
-    const totalCash = opening.total_cash ?? 0
-
-    return openingAmount + totalCash
-})
 
 function openModalOpen(terminal) {
     modalMode.value = 'open'
@@ -67,7 +56,7 @@ async function confirmOpen() {
     }
 }
 
-// Cierre — el backend ahora calcula expected_amount y closing_balance
+// Cierre (el backend calcula expected_amount y closing_balance)
 async function confirmClose() {
     const opening = selectedTerminal.value.openings?.[0]
     if (!opening) return
@@ -96,17 +85,15 @@ function confirmAction() {
 }
 
 function exportClosing(item) {
-    const closingId = item.openings?.[0]?.closing?.payment_terminal_closing_id;
+    const closingId = item.openings?.[0]?.closing?.payment_terminal_closing_id
 
     if (!closingId) {
-        return toast.error("No existe un cierre registrado para esta terminal.");
+        return toast.error("No existe un cierre registrado para esta terminal.")
     }
 
-    window.open(`/terminal-sessions/closing/${closingId}/export`, '_blank');
+    window.open(`/terminal-sessions/closing/${closingId}/export`, '_blank')
 }
-
 </script>
-
 <template>
 
     <Head title="Aperturas y Cierres" />
@@ -209,23 +196,38 @@ function exportClosing(item) {
 
                         <!-- TOTALES ANTES DE CIERRE -->
                         <div v-if="modalMode === 'close' && selectedTerminal?.openings?.[0]">
+
                             <v-divider class="my-3" />
 
                             <p class="font-weight-bold mb-2">Totales por Método de Pago</p>
 
-                            <p class="mb-1">Efectivo: <strong>${{ selectedTerminal?.openings?.[0]?.total_cash ?? 0
-                                    }}</strong></p>
-                            <p class="mb-1">Tarjeta: <strong>${{ selectedTerminal?.openings?.[0]?.total_card ?? 0
-                                    }}</strong></p>
-                            <p class="mb-1">Chivo Wallet: <strong>${{ selectedTerminal?.openings?.[0]?.total_chivo ?? 0
-                                    }}</strong>
+                            <p class="mb-1">
+                                Efectivo:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_cash ?? 0 }}</strong>
                             </p>
 
+                            <p class="mb-1">
+                                Tarjeta:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_card ?? 0 }}</strong>
+                            </p>
+
+                            <p class="mb-1">
+                                Chivo Wallet:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_chivo ?? 0 }}</strong>
+                            </p>
+
+                            <p class="mb-1">
+                                <strong>Total transaccionado:</strong>
+                                ${{ selectedTerminal?.openings?.[0]?.total_transacted ?? 0 }}
+                            </p>
                             <v-divider class="my-3" />
 
-                            <!-- Monto esperado -->
-                            <p class="text-h6 mb-2">
-                                <strong>Efectivo esperado: </strong> ${{ expectedAmount }}
+                            <!-- TOTAL GENERAL -->
+
+                            <!-- EFECTIVO ESPERADO (Viene directo del backend) -->
+                            <p class="mb-1">
+                                <strong>Efectivo esperado:</strong>
+                                ${{ selectedTerminal?.openings?.[0]?.expected_amount ?? 0 }}
                             </p>
 
                             <v-divider class="my-3" />
@@ -258,6 +260,7 @@ function exportClosing(item) {
         </v-container>
     </AdminLayout>
 </template>
+
 
 <style scoped>
 :deep(.v-data-table thead th) {
