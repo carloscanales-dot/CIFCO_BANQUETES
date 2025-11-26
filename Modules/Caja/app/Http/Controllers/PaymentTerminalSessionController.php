@@ -139,9 +139,7 @@ class PaymentTerminalSessionController extends Controller
         }
 
         $data = $request->validate([
-            'expected_amount' => 'required|numeric|min:0',
             'real_amount'     => 'required|numeric|min:0',
-            'closing_balance' => 'required|numeric',
             'notes'           => 'nullable|string|max:255',
             'user_id'         => 'required|exists:users,id',
         ]);
@@ -149,21 +147,36 @@ class PaymentTerminalSessionController extends Controller
         DB::beginTransaction();
 
         try {
+
+            // ==========================================
+            // 1️⃣ Obtener total de transacciones en EFECTIVO
+            // ==========================================
+            $cashTransactionsTotal = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
+                ->where('status_id', 1)
+                ->where('payment_method_id', 1) // SOLO EFECTIVO
+                ->sum('amount');
+
+            // ==========================================
+            // 2️⃣ Calcular monto esperado
+            // apertura + efectivo transaccionado
+            // ==========================================
+            $expected = $opening->opening_amount + $cashTransactionsTotal;
+
+            // ==========================================
+            // 3️⃣ Crear cierre con montos correctos
+            // ==========================================
             $closing = PaymentTerminalClosing::create([
                 'payment_terminal_opening_id' => $opening->id,
                 'payment_terminal_id'         => $opening->payment_terminal_id,
                 'user_id'                     => $data['user_id'],
-                'closing_date'                => Carbon::now(),
-                'expected_amount'             => $data['expected_amount'],
+                'closing_date'                => now(),
+                'expected_amount'             => $expected,
                 'real_amount'                 => $data['real_amount'],
-                'closing_balance'             => $data['closing_balance'],
+                'closing_balance'             => $data['real_amount'] - $expected,
                 'notes'                       => $data['notes'] ?? '',
             ]);
 
-            // $opening->update([
-            //     'opening_amount' => 0
-            // ]);
-            // Cambiar estado de terminal → cerrada (6)
+            // Cambiar estado de terminal → cerrada
             $opening->terminal->update(['status_id' => 6]);
 
             DB::commit();
@@ -174,6 +187,7 @@ class PaymentTerminalSessionController extends Controller
                 'closing' => $closing,
             ]);
         } catch (\Throwable $th) {
+
             DB::rollBack();
 
             return response()->json([
@@ -183,6 +197,7 @@ class PaymentTerminalSessionController extends Controller
             ], 500);
         }
     }
+
 
     public function exportClosing($closingId)
     {
