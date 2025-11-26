@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { useForm, router } from '@inertiajs/vue3'
+import { useForm, router, Head } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useToast } from 'vue-toastification'
 
@@ -77,6 +77,7 @@ function submit() {
 </script>
 
 <template>
+  <Head title="Actualizar Contraseña" />
   <AdminLayout>
     <v-container class="py-10 d-flex justify-center">
       <v-card class="pa-6 w-100" max-width="500" style="background-color: white;">

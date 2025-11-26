@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { usePage, router } from '@inertiajs/vue3'
+import { usePage, router, Head } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useToast } from 'vue-toastification'
 import axios from 'axios'
@@ -101,6 +101,7 @@ function exportClosing(item) {
 </script>
 
 <template>
+  <Head title="Aperturas y Cierres" />
     <AdminLayout>
         <v-container fluid class="pa-4">
 

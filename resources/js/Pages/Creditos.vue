@@ -1,12 +1,27 @@
 <template>
     <Head title="Créditos" />
     <CajaLayout>
+          <div v-if="props.terminal_status === 6">
+            <v-card
+                color="error"
+                border="start"
+                elevation="2"
+            >
+                <v-card-title class="text-h5 font-weight-bold">
+                    CAJA CERRADA
+                </v-card-title>
+                <v-card-text class="text-subtitle-1">
+                    No se pueden realizar ventas en esta terminal porque está cerrada.
+                </v-card-text>
+            </v-card>
+        </div>
+        <div v-else>
         <v-row>
             <!-- Panel lateral: detalle del crédito -->
             <v-col cols="12" md="4">
                 <v-card>
                     <v-card-title>Detalle de Crédito</v-card-title>
-
+                  <h1>{{ props.terminal_status }}</h1>
                     <!-- Select de empleado -->
                     <v-card-text>
                         <v-combobox
@@ -21,7 +36,6 @@
                             clearable
                         ></v-combobox>
                     </v-card-text>
-
                     <!-- Lista de productos seleccionados -->
                     <v-list>
                         <v-list-item v-for="item in cart.cartItems" :key="item.product_id">
@@ -86,12 +100,13 @@
                 </v-row>
             </v-col>
         </v-row>
+        </div>
     </CajaLayout>
 </template>
 
 <script setup>
 import CajaLayout from '@/Layouts/CajaLayout.vue'
-import { Head } from '@inertiajs/vue3'
+import { Head, usePage } from '@inertiajs/vue3'
 import { ref, onMounted } from 'vue'
 import { useCartStore } from '@/Stores/cart'
 import { logoBitmap } from '../logoBitmap.js'
@@ -104,7 +119,9 @@ const cart = useCartStore()
 const pedidoCounter = ref(1)
 const props = defineProps({
     printer_ip: String,
-    station_name: String
+    station_name: String,
+    terminal_status: Number,
+    fair_name: String,
 })
 
 let epos = null
@@ -114,7 +131,6 @@ onMounted(async () => {
       /* 👇 Aquí cargamos empleados y productos correctamente */
     await loadEmployees();
     await loadStationProducts();
-    console.log("Conectando a impresora con IP:", props.printer_ip);
     if (!props.printer_ip) {
         alert(" No hay una impresora activa asignada a esta estación.");
         return;
@@ -263,7 +279,7 @@ const printCreditReceipt = async () => {
 
 
             printer.addTextStyle(false, false, true, printer.COLOR_1)
-            printer.addText("COMIDA CHINA\n")
+            printer.addText(`${props.fair_name || 'CIFCO'}\n`);
             printer.addTextStyle(false, false, false, printer.COLOR_1)
             printer.addText("https://cifco.gob.sv/\n")
             printer.addText("-----------------------------\n")
@@ -316,6 +332,8 @@ const printCreditReceipt = async () => {
             printer.addText("¡GRACIAS POR SU PREFERENCIA!\n");
             printer.addFeedLine(1);
             printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
+            printer.addFeedLine(3);
+            printer.addText("F.________________________________\n");
             printer.addFeedLine(3);
             printer.addCut(printer.CUT_FEED);
         };

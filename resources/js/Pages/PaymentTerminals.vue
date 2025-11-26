@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { usePage, useForm, router } from '@inertiajs/vue3'
+import { usePage, useForm, router, Head } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useToast } from 'vue-toastification'
 
@@ -105,6 +105,7 @@ function changePage(p = 1) {
 </script>
 
 <template>
+  <Head title="Terminales de Pago" />
   <AdminLayout>
     <v-container fluid class="pa-4" style="background-color: #f8f8f8; min-height: 100vh;">
       <v-card flat class="pa-4 elevation-1" style="background-color: white;">

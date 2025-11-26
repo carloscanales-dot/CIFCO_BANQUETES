@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Modules\Ticket\Models\Station; // <-- importar Station
 
 class TransactionController extends Controller
 {
@@ -13,13 +15,41 @@ class TransactionController extends Controller
     {
         $cartItems = $request->input('cartItems', []);
         $total = $request->input('total', 0);
-        $station_id = $request->input('station_id', 1);
-        $employee_id = $request->input('employee_id', 103); // 🔹 Por defecto 104 (cliente general)
+
+        // leer como enteros/valores
+        $station_id = (int) $request->input('station_id', 0); // NO usar 1 por defecto
+        $payment_method = (int) $request->input('payment_method', 0); // 0 = no informado
+        $employee_id = (int) $request->input('employee_id', 0); // opcional
+
+        // Opcional: loguear payload para depuración (quítalo en prod)
+        Log::debug('Transactions.store payload', [
+            'user_id' => Auth::id(),
+            'station_id' => $station_id,
+            'payment_method' => $payment_method,
+            'employee_id' => $employee_id,
+            'total' => $total,
+            'items_count' => count($cartItems),
+        ]);
+
+        // Validaciones básicas
+        if (!$station_id) {
+            return response()->json(['success' => false, 'message' => 'Station_id no proporcionado'], 422);
+        }
+
+        // Validar existencia de estación
+        if (! Station::find($station_id)) {
+            return response()->json(['success' => false, 'message' => 'Estación inválida'], 422);
+        }
+
+        // Validar payment method: si no viene, asignar un default razonable (por ejemplo 1 = Efectivo)
+        if (! $payment_method) {
+            $payment_method = 1;
+        }
 
         // Buscar la última apertura de terminal del usuario autenticado
         $terminalOpening = DB::table('payment_terminal_opening')
             ->where('user_id', Auth::id())
-            ->where('payment_terminal_id', 1)
+            ->where('payment_terminal_id', 1) // si esto debe ser dinámico, reemplazar
             ->orderByDesc('opening_date')
             ->first();
 
@@ -33,17 +63,17 @@ class TransactionController extends Controller
         DB::beginTransaction();
 
         try {
-            // Insertar la transacción general
+            // Insertar la transacción general usando los valores validados
             $transactionId = DB::table('transactions')->insertGetId([
                 'user_id' => Auth::id(),
                 'station_id' => $station_id,
                 'amount' => $total,
                 'transaction_date' => now(),
-                'transaction_type_id' => 1, // 1 = venta normal, 2 = crédito (ajusta si lo manejas)
+                'transaction_type_id' => 1, // 1 = venta normal
                 'status_id' => 1,
-                'payment_method_id' => 1,
+                'payment_method_id' => $payment_method,
                 'payment_terminal_opening_id' => $terminalOpening->id,
-                'employee_id' => $employee_id, // 🔹 Aquí se asigna dinámicamente
+                'employee_id' => $employee_id ?: null,
                 'is_refunded' => 0,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -71,9 +101,10 @@ class TransactionController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Transaction store error: '.$e->getMessage(), ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage()
+                'message' => 'Ocurrió un error al procesar la transacción'
             ], 500);
         }
     }

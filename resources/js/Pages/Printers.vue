@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { router, useForm } from '@inertiajs/vue3'
+import { router, useForm, Head } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useToast } from 'vue-toastification'
 
@@ -115,6 +115,7 @@ function toggleStatus(printer) {
 </script>
 
 <template>
+  <Head title="Impresoras" />
     <AdminLayout>
         <v-container fluid class="pa-4" style="background-color: #f8f8f8; min-height: 100vh;">
             <v-card flat class="pa-4 elevation-1" style="background-color: white;">
@@ -196,9 +197,9 @@ function toggleStatus(printer) {
                     <v-card-title class="text-h6 font-weight-bold text-center">
                         Confirmar eliminación
                     </v-card-title>
-        
+
                     <v-divider></v-divider>
-        
+
                     <v-card-text class="pt-4 text-center">
                         ¿Seguro que deseas eliminar la impresora con IP
                         <strong>{{ printerToDelete?.ip_adress }}</strong>?
@@ -206,9 +207,9 @@ function toggleStatus(printer) {
                             Esta acción no se puede deshacer.
                         </div>
                     </v-card-text>
-        
+
                     <v-divider></v-divider>
-        
+
                     <v-card-actions class="justify-end">
                         <v-btn text color="red" variant="elevated" @click="closeDeleteModal()">Cancelar</v-btn>
                         <v-btn color="black" variant="elevated" @click="confirmDeletePrinter()">Eliminar</v-btn>

@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { useForm, router } from '@inertiajs/vue3'
+import { useForm, router, Head } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useToast } from 'vue-toastification'
 
@@ -87,6 +87,7 @@ function deleteLocation() {
 
 
 <template>
+  <Head title="Locaciones" />
   <AdminLayout>
     <v-container fluid class="pa-4" style="background-color: #f8f8f8; min-height: 100vh;">
       <v-card flat class="pa-4 elevation-1" style="background-color: white;">

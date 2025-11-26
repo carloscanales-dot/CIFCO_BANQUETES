@@ -1,6 +1,6 @@
 <script setup>
 import { ref } from 'vue'
-import { router, useForm } from '@inertiajs/vue3'
+import { router, useForm, Head } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useToast } from "vue-toastification";
 
@@ -87,6 +87,7 @@ function confirmResetPassword() {
 
 <template>
     <AdminLayout>
+      <Head title="Usuarios" />
         <v-container fluid class="pa-4" style="background-color: #f8f8f8; min-height: 100vh;">
             <!-- Tabla de usuarios -->
             <v-card flat class="pa-4 elevation-1" style="background-color: white;">

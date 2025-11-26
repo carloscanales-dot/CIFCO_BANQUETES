@@ -83,7 +83,7 @@
     <v-card-title class="font-weight-bold">Forma de Pago</v-card-title>
 
     <v-card-text>
-      <v-radio-group v-model="paymentMethod">
+      <v-radio-group v-model.number="paymentMethod">
 
         <v-radio :value="1" label="Efectivo"></v-radio>
 
@@ -109,20 +109,37 @@
 
     <v-card-actions>
       <v-btn variant="text" @click="cancelarPago">Cancelar</v-btn>
-      <v-btn color="primary" @click="confirmarPago">Confirmar Pago</v-btn>
+      <v-btn :disabled="processing" color="primary" @click="confirmarPago">
+        <span v-if="!processing">Confirmar Pago</span>
+        <span v-else>Procesando...</span>
+      </v-btn>
     </v-card-actions>
   </v-card>
 </v-dialog>
-
+<v-snackbar
+    v-model="snackbar.show"
+    :color="snackbar.color"
+    :timeout="snackbar.timeout"
+    location="top right"
+  >
+    {{ snackbar.message }}
+    <template v-slot:actions>
+      <v-btn color="white" variant="text" @click="snackbar.show = false">
+        X
+      </v-btn>
+    </template>
+  </v-snackbar>
 </template>
 
 <script setup>
 import CajaLayout from '@/Layouts/CajaLayout.vue'
-import { Head } from '@inertiajs/vue3'
-import { ref, onMounted, computed } from 'vue'
+import { Head, usePage } from '@inertiajs/vue3'
+import { ref, onMounted, computed, reactive } from 'vue'
 import { useCartStore } from '@/Stores/cart'
 import { logoBitmap } from '../logoBitmap.js'
 import axios from 'axios'
+
+const page = usePage();
 
 const products = ref([])
 const cart = useCartStore()
@@ -131,7 +148,8 @@ const pedidoCounter = ref(1);
 const props = defineProps({
     printer_ip: String,
     station_name: String,
-    terminal_status: Number
+    terminal_status: Number,
+    fair_name: String,
 })
 
 let epos = null;
@@ -141,6 +159,39 @@ let printer = null;
 const showPaymentModal = ref(false)
 const paymentMethod = ref(null)   // 1=Efectivo, 2=Tarjeta, 3=Chivo
 const efectivoRecibido = ref(null)
+const processing = ref(false)
+
+const snackbar = reactive({
+  show: false,
+  message: "",
+  color: "success",
+  timeout: 3000,
+});
+
+const showToast = (message, color = "success") => {
+  snackbar.message = message;
+  snackbar.color = color;
+  snackbar.show = true;
+};
+
+
+// helper: station id (en scope global del componente)
+const getStationId = () => {
+  const p = page.props || {}
+
+  if (p.station_id) return Number(p.station_id)
+  if (p.station && p.station.id) return Number(p.station.id)
+
+  // si el usuario tiene estaciones en props.auth.user.stations
+  const user = p.auth?.user
+  if (user && Array.isArray(user.stations) && user.stations.length) {
+    const s = user.stations[0]
+    return Number(s.id ?? s.station_id ?? s.stationId) || null
+  }
+
+  // fallback: null (el backend debe validar y rechazar si es inválido)
+  return null
+}
 
 // Cálculo del cambio solo si es efectivo
 const cambio = computed(() => {
@@ -164,43 +215,59 @@ const cancelarPago = () => {
     showPaymentModal.value = false
 }
 
-const confirmarPago = () => {
-    if (!paymentMethod.value) {
-        alert("Seleccione una forma de pago")
-        return
+// confirmar pago: valida, guarda selección local y llama a printReceipt
+const confirmarPago = async () => {
+  if (processing.value) return
+  if (!paymentMethod.value) {
+    showToast("Seleccione una forma de pago", "warning");
+    return
+  }
+  if (paymentMethod.value === 1) {
+    if (!efectivoRecibido.value || efectivoRecibido.value < cart.cartTotal) {
+      showToast("El efectivo recibido es insuficiente", "error");
+      return
     }
+  }
 
-    if (paymentMethod.value === 1) {
-        if (!efectivoRecibido.value || efectivoRecibido.value < cart.cartTotal) {
-            alert("El efectivo recibido es insuficiente")
-            return
-        }
-    }
+  const selectedPaymentMethod = Number(paymentMethod.value)
+  const selectedEfectivo = efectivoRecibido.value ?? 0
 
-    showPaymentModal.value = false
-    resetModalPago()
-    printReceipt()
+  showPaymentModal.value = false
+  processing.value = true
+
+  try {
+    console.log('confirmarPago -> payment:', selectedPaymentMethod, 'efectivo:', selectedEfectivo, 'station_id:', getStationId())
+    await printReceipt(selectedPaymentMethod, selectedEfectivo)
+  } finally {
+    processing.value = false
+  }
 }
 
 // Cargar productos
 onMounted(async () => {
+    if (props.terminal_status === 6) {
+    showToast(
+      "No se pueden realizar ventas en esta terminal porque está cerrada.",
+      "error"
+    );
+  }
     await loadStationProducts();
 
     if (!props.printer_ip) {
-        alert("No hay una impresora activa asignada.");
+        showToast("No hay una impresora activa asignada.", "error");
         return;
     }
 
     epos = new window.epson.ePOSDevice();
     epos.connect(props.printer_ip, 8008, (result) => {
         if (result !== 'OK') {
-            alert("No se pudo conectar a la impresora: " + result);
+            showToast("No se pudo conectar a la impresora: " + result, "error");
             return;
         }
 
         epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, code) => {
             if (!printerDevice) {
-                alert("Error creando dispositivo: " + code);
+                showToast("Error creando dispositivo: " + code, "error");
                 return;
             }
             printer = printerDevice;
@@ -225,31 +292,53 @@ const loadStationProducts = async () => {
     }
 };
 
-const printReceipt = async () => {
+const printReceipt = async (paymentMethodValue, efectivoValue) => {
     if (!printer) {
-        alert("Impresora no conectada");
+        showToast("Impresora no conectada", "error");
         return;
     }
 
     if (!cart.cartItems.length) {
-        alert("El carrito está vacío");
+        showToast("El carrito está vacío", "warning");
         return;
     }
 
+      // obtener y validar stationId
+      const stationId = getStationId()
+      if (!stationId) {
+        showToast('Estación inválida. Contacte al administrador.', "error");
+        return
+      }
+
+
     try {
+        // debug: mostrar payload en consola
+        console.log('POST /ticket/cajas/transactions/store', {
+          cartItems: cart.cartItems,
+          total: cart.cartTotal,
+          station_id: stationId,
+          employee_id: 103,
+          payment_method: Number(paymentMethodValue)
+        })
+
         const response = await axios.post('/ticket/cajas/transactions/store', {
             cartItems: cart.cartItems,
             total: cart.cartTotal,
-            station_id: 1,
-            payment_method: paymentMethod.value
+            station_id: stationId,
+            employee_id: 103,
+            payment_method: Number(paymentMethodValue)
         });
 
         if (!response.data.success) {
-            alert("Error al guardar la transacción: " + response.data.message);
+            showToast("Error al guardar la transacción: " + response.data.message, "error");
             return;
         }
 
         const transactionId = response.data.transaction_id;
+
+        const cambioLocal = (paymentMethodValue === 1)
+      ? (Number(efectivoValue) - Number(cart.cartTotal)).toFixed(2)
+      : "0.00";
 
         const printOnce = () => {
             const sourceWidth = 512;
@@ -286,7 +375,7 @@ const printReceipt = async () => {
             printer.addFeedLine(1);
 
             printer.addTextStyle(false, false, true, printer.COLOR_1);
-            printer.addText("COMIDA CHINA\n");
+            printer.addText(`${props.fair_name || 'CIFCO'}\n`);
             printer.addTextStyle(false, false, false, printer.COLOR_1);
             printer.addText("-----------------------------\n");
 
@@ -296,6 +385,8 @@ const printReceipt = async () => {
 
             printer.addText(`VENTA N.º ${transactionId}\n`);
             printer.addText(`${fecha} - ${hora}\n`);
+            printer.addText(`ESTACIÓN: ${props.station_name || 'N/A'}\n`);
+            printer.addText(`CAJERO: ${page.props.auth.user.name || 'N/A'}\n`);
             printer.addText("-----------------------------\n");
 
             printer.addText("CANT  ARTÍCULO            P.UNIT  SUBTOTAL\n");
@@ -318,17 +409,19 @@ const printReceipt = async () => {
             printer.addText(`TOTAL: $${cart.cartTotal.toFixed(2)}\n`);
             printer.addTextStyle(false, false, false, printer.COLOR_1);
 
-            if (paymentMethod.value === 1) {
-                printer.addText(`EFECTIVO: $${efectivoRecibido.value}\n`);
-                printer.addText(`CAMBIO:   $${cambio.value}\n`);
-            } else if (paymentMethod.value === 2) {
-                printer.addText("PAGO CON TARJETA\n");
-            } else if (paymentMethod.value === 3) {
-                printer.addText("PAGO CHIVO\n");
+            if (paymentMethodValue === 1) {
+              printer.addText(`EFECTIVO: $${Number(efectivoValue).toFixed(2)}\n`);
+              printer.addText(`CAMBIO:   $${cambioLocal}\n`);
+            } else if (paymentMethodValue === 2) {
+              printer.addText("PAGO CON TARJETA\n");
+            } else if (paymentMethodValue === 3) {
+              printer.addText("PAGO CHIVO\n");
             }
 
             printer.addText("-----------------------------\n");
             printer.addText("GRACIAS POR SU PREFERENCIA\n");
+            printer.addFeedLine(1);
+            printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
             printer.addFeedLine(3);
             printer.addCut(printer.CUT_FEED);
         };
@@ -340,9 +433,12 @@ const printReceipt = async () => {
         cart.clearCart();
         pedidoCounter.value++;
 
+        resetModalPago();
+        showToast('Transacción procesada exitosamente', 'success');
+
     } catch (error) {
         console.error("Error procesando la transacción:", error);
-        alert("Ocurrió un error al procesar la transacción");
+        showToast("Ocurrió un error al procesar la transacción", "error");
     }
 };
 </script>

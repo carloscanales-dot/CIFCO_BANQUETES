@@ -26,12 +26,11 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
             ->name('location.all');
     });
     // Administrador o Empleado
-    Route::middleware('role:Administrador|Empleado')->group(function () {
+    Route::middleware('role:Administrador|Empleado|Cajero')->group(function () {
         Route::resource('/fair', FairController::class)->except(['show']);
         Route::resource('/station', StationController::class)->except(['show']);
         Route::resource('/product', ProductController::class)->except(['show']);
         Route::get('/product/all', [ProductController::class, 'all'])->name('product.all');
-        Route::resource('/stationTicket', StationTicketController::class)->only(['index']);
         Route::get('cajas/products', [StationSaleController::class, 'getProductsForUser'])->name('cajas.products');
         Route::get('/stations/my-products', [StationSaleController::class, 'getProductsForUser'])
             ->name('stations.my-products');
@@ -50,7 +49,8 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
         Route::get('/stationTicket/export', [StationTicketController::class, 'export'])->name('stationTicket.export');
     });
     // Todos los roles: Administrador, Empleado o Lector
-    Route::middleware('role:Administrador|Empleado|Lector')->group(function () {
+    Route::middleware('role:Administrador|Empleado|Cajero')->group(function () {
+        Route::resource('/stationTicket', StationTicketController::class)->only(['index']);
         Route::get('/reader/index', [ReaderController::class, 'index'])->name('reader.index');
         Route::post('/reader/store', [ReaderController::class, 'store'])->name('reader.store');
         Route::get('/reader/report', [ReaderController::class, 'ticketPdf'])->name('reader.ticketPdf');
