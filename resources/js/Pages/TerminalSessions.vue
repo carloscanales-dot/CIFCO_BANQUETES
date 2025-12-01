@@ -21,6 +21,7 @@ const openingAmount = ref(0)
 // Campos cierre
 const closingReal = ref(0)
 const closingNotes = ref('')
+const closingPosReal = ref(0)
 
 function openModalOpen(terminal) {
     modalMode.value = 'open'
@@ -34,6 +35,7 @@ function openModalClose(terminal) {
     selectedTerminal.value = terminal
     closingReal.value = 0
     closingNotes.value = ''
+    closingPosReal.value = 0
     dialog.value = true
 }
 
@@ -64,6 +66,7 @@ async function confirmClose() {
     try {
         const response = await axios.post(`/terminal-sessions/${opening.id}/close`, {
             real_amount: closingReal.value,
+            pos_real_amount: closingPosReal.value,
             notes: closingNotes.value,
             user_id: selectedTerminal.value.user?.id ?? null,
         })
@@ -183,7 +186,6 @@ function exportClosing(item) {
                     <v-divider class="my-3" />
 
                     <v-card-text class="text-body-2">
-
                         <!-- INFORMACIÓN PRINCIPAL -->
                         <div class="mb-3">
                             <p class="mb-1">
@@ -226,8 +228,16 @@ function exportClosing(item) {
 
                             <!-- EFECTIVO ESPERADO (Viene directo del backend) -->
                             <p class="mb-1">
-                                <strong>Efectivo esperado:</strong>
-                                ${{ selectedTerminal?.openings?.[0]?.expected_amount ?? 0 }}
+                                Total efectivo esperado:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.expected_amount ?? 0 }}</strong>
+                            </p>
+                            <p class="mb-1">
+                                Total esperado en tarjeta:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_card ?? 0 }}</strong>
+                            </p>
+                            <p class="mb-1">
+                                Total esperado en Chivo Wallet:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_chivo ?? 0 }}</strong>
                             </p>
 
                             <v-divider class="my-3" />
@@ -239,8 +249,11 @@ function exportClosing(item) {
 
                         <!-- Cierre -->
                         <div v-else>
-                            <v-text-field v-model="closingReal" label="Monto recibido" type="number" prefix="$"
+                            <v-text-field v-model="closingReal" label="Efectivo recibido" type="number" prefix="$"
                                 variant="solo" density="compact" class="mb-2" />
+
+                            <v-text-field v-model="closingPosReal" label="Monto POS (tarjeta) recibido" type="number"
+                                prefix="$" variant="solo" density="compact" class="mb-2" />
 
                             <v-textarea v-model="closingNotes" label="Observaciones" variant="solo" density="compact"
                                 rows="2" />

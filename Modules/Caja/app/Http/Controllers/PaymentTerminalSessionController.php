@@ -56,7 +56,7 @@ class PaymentTerminalSessionController extends Controller
             ->withQueryString();
 
         // ===========================
-        // ➕ AÑADIR TOTALES A CADA APERTURA
+        // AÑADIR TOTALES A CADA APERTURA
         // ===========================
         $terminals->getCollection()->transform(function ($terminal) {
 
@@ -142,6 +142,7 @@ class PaymentTerminalSessionController extends Controller
 
         $data = $request->validate([
             'real_amount' => 'required|numeric|min:0',
+            'pos_real_amount' => 'required|numeric|min:0',
             'notes'       => 'nullable|string|max:255',
             'user_id'     => 'required|exists:users,id',
         ]);
@@ -178,6 +179,7 @@ class PaymentTerminalSessionController extends Controller
                 'closing_date'                => Carbon::now(),
                 'expected_amount'             => $expectedAmount,
                 'real_amount'                 => $data['real_amount'],
+                'pos_real_amount'             => $data['pos_real_amount'],
                 'closing_balance'             => $closingBalance,
                 'notes'                       => $data['notes'] ?? '',
             ]);
