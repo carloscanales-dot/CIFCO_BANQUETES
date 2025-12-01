@@ -12,7 +12,7 @@ const terminals = computed(() => page.props.terminals?.data ?? [])
 
 // Modal
 const dialog = ref(false)
-const modalMode = ref('open') // 'open' | 'close'
+const modalMode = ref('open')
 const selectedTerminal = ref(null)
 
 // Campos apertura
@@ -21,6 +21,7 @@ const openingAmount = ref(0)
 // Campos cierre
 const closingReal = ref(0)
 const closingNotes = ref('')
+const closingPosReal = ref(0)
 
 function openModalOpen(terminal) {
     modalMode.value = 'open'
@@ -34,6 +35,7 @@ function openModalClose(terminal) {
     selectedTerminal.value = terminal
     closingReal.value = 0
     closingNotes.value = ''
+    closingPosReal.value = 0
     dialog.value = true
 }
 
@@ -56,18 +58,17 @@ async function confirmOpen() {
     }
 }
 
-// Cierre
+// Cierre (el backend calcula expected_amount y closing_balance)
 async function confirmClose() {
     const opening = selectedTerminal.value.openings?.[0]
     if (!opening) return
 
     try {
         const response = await axios.post(`/terminal-sessions/${opening.id}/close`, {
-            expected_amount: opening.opening_amount,
             real_amount: closingReal.value,
-            closing_balance: closingReal.value - opening.opening_amount,
-            user_id: selectedTerminal.value.user?.id ?? null,
+            pos_real_amount: closingPosReal.value,
             notes: closingNotes.value,
+            user_id: selectedTerminal.value.user?.id ?? null,
         })
 
         if (response.data.success) {
@@ -87,21 +88,18 @@ function confirmAction() {
 }
 
 function exportClosing(item) {
-    const closingId = item.openings?.[0]?.closing?.payment_terminal_closing_id;
+    const closingId = item.openings?.[0]?.closing?.payment_terminal_closing_id
 
     if (!closingId) {
-        return toast.error("No existe un cierre registrado para esta terminal.");
+        return toast.error("No existe un cierre registrado para esta terminal.")
     }
 
-    // Abrir en nueva pestaña el PDF generado por el backend (no imprime)
-    window.open(`/terminal-sessions/closing/${closingId}/export`, '_blank');
+    window.open(`/terminal-sessions/closing/${closingId}/export`, '_blank')
 }
-
-
 </script>
-
 <template>
-  <Head title="Aperturas y Cierres" />
+
+    <Head title="Aperturas y Cierres" />
     <AdminLayout>
         <v-container fluid class="pa-4">
 
@@ -110,8 +108,6 @@ function exportClosing(item) {
                 <v-card-title class="text-h6 font-weight-bold">Aperturas y Cierres</v-card-title>
                 <v-divider class="my-3" />
 
-                <!-- HEADERS con columnas virtuales -->
-                <!-- Tabla de terminales -->
                 <v-data-table :items="terminals" dense :headers="[
                     { title: 'Terminal', key: 'terminal_name' },
                     { title: 'Estado', key: 'status_id' },
@@ -156,19 +152,17 @@ function exportClosing(item) {
 
                     <!-- Acciones -->
                     <template #item.actions="{ item }">
-                        <!-- Botón Aperturar -->
+
                         <v-btn v-if="item.status_id === 6" color="black" variant="elevated" size="small"
                             @click="openModalOpen(item)">
                             Aperturar
                         </v-btn>
 
-                        <!-- Botón Cerrar -->
                         <v-btn v-else-if="item.status_id === 5 || item.status_id === 7" color="black" variant="elevated"
                             size="small" @click="openModalClose(item)">
                             Cerrar
                         </v-btn>
 
-                        <!-- Botón Exportar PDF -->
                         <v-btn v-if="item.status_id === 6 && item.openings?.[0]?.closing" color="black"
                             variant="outlined" size="small" class="ml-2" @click="exportClosing(item)">
                             <v-icon small class="mr-1">mdi-file-pdf-box</v-icon>
@@ -179,10 +173,12 @@ function exportClosing(item) {
                 </v-data-table>
             </v-card>
 
+            <!-- ========================== -->
+            <!-- MODAL -->
+            <!-- ========================== -->
             <v-dialog v-model="dialog" max-width="420">
                 <v-card>
 
-                    <!-- TÍTULO -->
                     <v-card-title class="text-h6 font-weight-bold">
                         {{ modalMode === 'open' ? 'Aperturar Caja' : 'Cerrar Caja' }}
                     </v-card-title>
@@ -190,62 +186,80 @@ function exportClosing(item) {
                     <v-divider class="my-3" />
 
                     <v-card-text class="text-body-2">
-
                         <!-- INFORMACIÓN PRINCIPAL -->
                         <div class="mb-3">
                             <p class="mb-1">
-                                <strong>Terminal:</strong>
-                                {{ selectedTerminal?.terminal_name }}
+                                <strong>Terminal:</strong> {{ selectedTerminal?.terminal_name }}
                             </p>
                             <p class="mb-1">
-                                <strong>Cajero:</strong>
-                                {{ selectedTerminal?.user?.name ?? 'Sin asignar' }}
+                                <strong>Cajero:</strong> {{ selectedTerminal?.user?.name ?? 'Sin asignar' }}
                             </p>
                         </div>
 
-                        <!-- TOTALES SOLO SI ESTÁ ABIERTA O PRE-CIERRE -->
-                        <div v-if="selectedTerminal?.status_id === 5 || selectedTerminal?.status_id === 7">
+                        <!-- TOTALES ANTES DE CIERRE -->
+                        <div v-if="modalMode === 'close' && selectedTerminal?.openings?.[0]">
+
                             <v-divider class="my-3" />
 
                             <p class="font-weight-bold mb-2">Totales por Método de Pago</p>
 
-                            <div class="mb-2">
-                                <p class="mb-1">Efectivo:
-                                    <strong>${{ selectedTerminal?.openings?.[0]?.total_cash ?? 0 }}</strong>
-                                </p>
-                                <p class="mb-1">Tarjeta:
-                                    <strong>${{ selectedTerminal?.openings?.[0]?.total_card ?? 0 }}</strong>
-                                </p>
-                                <p class="mb-1">Chivo Wallet:
-                                    <strong>${{ selectedTerminal?.openings?.[0]?.total_chivo ?? 0 }}</strong>
-                                </p>
-                            </div>
+                            <p class="mb-1">
+                                Efectivo:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_cash ?? 0 }}</strong>
+                            </p>
 
-                            <v-divider class="my-3" />
+                            <p class="mb-1">
+                                Tarjeta:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_card ?? 0 }}</strong>
+                            </p>
 
-                            <p>
+                            <p class="mb-1">
+                                Chivo Wallet:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_chivo ?? 0 }}</strong>
+                            </p>
+
+                            <p class="mb-1">
                                 <strong>Total transaccionado:</strong>
                                 ${{ selectedTerminal?.openings?.[0]?.total_transacted ?? 0 }}
+                            </p>
+                            <v-divider class="my-3" />
+
+                            <!-- TOTAL GENERAL -->
+
+                            <!-- EFECTIVO ESPERADO (Viene directo del backend) -->
+                            <p class="mb-1">
+                                Total efectivo esperado:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.expected_amount ?? 0 }}</strong>
+                            </p>
+                            <p class="mb-1">
+                                Total esperado en tarjeta:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_card ?? 0 }}</strong>
+                            </p>
+                            <p class="mb-1">
+                                Total esperado en Chivo Wallet:
+                                <strong>${{ selectedTerminal?.openings?.[0]?.total_chivo ?? 0 }}</strong>
                             </p>
 
                             <v-divider class="my-3" />
                         </div>
 
-                        <!-- FORMULARIO DE APERTURA -->
+                        <!-- Apertura -->
                         <v-text-field v-if="modalMode === 'open'" v-model="openingAmount" label="Monto de apertura"
                             type="number" prefix="$" variant="solo" density="compact" />
 
-                        <!-- FORMULARIO DE CIERRE -->
+                        <!-- Cierre -->
                         <div v-else>
-                            <v-text-field v-model="closingReal" label="Monto recibido" type="number" prefix="$"
+                            <v-text-field v-model="closingReal" label="Efectivo recibido" type="number" prefix="$"
                                 variant="solo" density="compact" class="mb-2" />
+
+                            <v-text-field v-model="closingPosReal" label="Monto POS (tarjeta) recibido" type="number"
+                                prefix="$" variant="solo" density="compact" class="mb-2" />
 
                             <v-textarea v-model="closingNotes" label="Observaciones" variant="solo" density="compact"
                                 rows="2" />
                         </div>
                     </v-card-text>
 
-                    <!-- ACCIONES -->
                     <v-card-actions>
                         <v-spacer />
                         <v-btn text @click="dialog = false">Cancelar</v-btn>
@@ -253,20 +267,18 @@ function exportClosing(item) {
                             {{ modalMode === 'open' ? 'Confirmar Apertura' : 'Confirmar Cierre' }}
                         </v-btn>
                     </v-card-actions>
+
                 </v-card>
             </v-dialog>
         </v-container>
     </AdminLayout>
 </template>
 
+
 <style scoped>
 :deep(.v-data-table thead th) {
     font-weight: 700 !important;
     color: black !important;
     background-color: #f7f7f7 !important;
-}
-
-.text-grey {
-    color: #9e9e9e !important;
 }
 </style>

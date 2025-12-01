@@ -19,6 +19,7 @@ return new class extends Migration
             $table->timestamp('closing_date');
             $table->decimal('expected_amount', 10, 2);
             $table->decimal('real_amount', 10, 2);
+            $table->decimal('pos_real_amount', 10, 2);
             $table->decimal('closing_balance', 10, 2);
             $table->string('notes');
             $table->timestamps();

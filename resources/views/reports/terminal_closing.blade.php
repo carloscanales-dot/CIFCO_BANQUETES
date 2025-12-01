@@ -3,158 +3,131 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Cierre de Terminal</title>
+    <title>Acta de Cierre de Caja</title>
 
+    <style>
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 11px;
+            color: #000;
+            margin: 14px;
+        }
+
+        /* HEADER */
+        .header-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 6px;
+        }
+
+        .header-table td {
+            border: none;
+            vertical-align: middle;
+            padding: 0;
+        }
+
+        .header-left img {
+            width: 110px;
+        }
+
+        .header-right img {
+            width: 80px;
+            float: right;
+        }
+
+        .header-center {
+            text-align: center;
+            font-weight: bold;
+            line-height: 1.15;
+        }
+
+        .header-center h3 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        /* SECTION TITLES */
+        .section-title {
+            font-size: 11px;
+            font-weight: bold;
+            margin: 8px 0 3px 0;
+            text-transform: uppercase;
+        }
+
+        /* TABLES */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 6px;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            font-size: 10px;
+            padding: 3px 4px;
+        }
+
+        th {
+            background-color: #f2f2f2;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        /* SIGNATURES */
+        .signatures {
+            width: 100%;
+            margin-top: 20px;
+            table-layout: fixed;
+        }
+
+        .signatures td {
+            text-align: center;
+            padding-top: 25px;
+        }
+
+        .sign-line {
+            border-top: 1px solid #000;
+            width: 65%;
+            margin: 0 auto;
+            padding-top: 2px;
+            font-size: 9px;
+        }
+    </style>
 </head>
-<style>
-    body {
-        font-family: DejaVu Sans, sans-serif;
-        font-size: 11px;
-        color: #000;
-        margin: 15px;
-    }
-
-    /* ================================
-       ENCABEZADO SIN BORDES
-       ================================ */
-    .header-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 10px;
-    }
-
-    .header-table td {
-        border: none !important;
-        vertical-align: middle;
-        padding: 0;
-    }
-
-    .header-left img {
-        width: 130px;
-    }
-
-    .header-center {
-        text-align: center;
-        font-weight: bold;
-        line-height: 1.2;
-    }
-
-    .header-center h2 {
-        margin: 0;
-        font-size: 15px;
-        font-weight: bold;
-    }
-
-    .header-center small {
-        font-size: 10px;
-        margin-top: 2px;
-    }
-
-    .header-right img {
-        width: 95px;
-    }
-
-    /* ================================
-       SECCIONES
-       ================================ */
-    .section-title {
-        font-size: 12px;
-        font-weight: bold;
-        margin: 12px 0 4px 0;
-        text-transform: uppercase;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 4px;
-        margin-bottom: 10px;
-    }
-
-    th,
-    td {
-        border: 1px solid #444;
-        padding: 4px 5px;
-        font-size: 11px;
-    }
-
-    th {
-        background: #f0f0f0;
-        font-weight: bold;
-    }
-
-    .text-right {
-        text-align: right;
-    }
-
-    /* ================================
-       RESUMEN BOX
-       ================================ */
-    .summary-box {
-        border: 1px solid #444;
-        padding: 8px;
-        margin-top: 10px;
-        font-size: 11px;
-        line-height: 1.3;
-    }
-
-    /* ================================
-       FIRMAS
-       ================================ */
-    .signatures-table {
-        width: 100%;
-        table-layout: fixed;
-        margin-top: 30px;
-    }
-
-    .signatures-table td {
-        width: 33.33%;
-        padding-top: 40px;
-        text-align: center;
-        vertical-align: bottom;
-    }
-
-    .line {
-        border-top: 1px solid #000;
-        width: 75%;
-        margin: 0 auto;
-        padding-top: 3px;
-        font-size: 10px;
-    }
-</style>
-
 
 <body>
 
+    <!-- HEADER ORIGINAL PERO COMPACTADO -->
     <table class="header-table">
         <tr>
             <td class="header-left">
-                <img src="{{ public_path('Logo-Cifco.png') }}" alt="Logo Cifco">
+                <img src="{{ public_path('Logo-Cifco.png') }}" alt="Logo CIFCO">
             </td>
 
             <td class="header-center">
-                <h2>CENTRO INTERNACIONAL DE FERIAS Y CONVENCIONES DE EL SALVADOR</h2>
-                <h2>Acta de cierre de caja</h2>
-                <div style="font-size:14px; margin-top:4px;">
-                    <strong>{{ $station->fair->fair_name ?? '' }}</strong>
-                </div>
+                <h3>CENTRO INTERNACIONAL DE FERIAS Y CONVENCIONES DE EL SALVADOR</h3>
+                <h3>{{ $station->fair->fair_name ?? '' }}</h3>
+                <h3>Acta de cierre de caja</h3>
             </td>
 
-            <td class="header-right" style="text-align: right;">
+            <td class="header-right">
                 <img src="{{ public_path('Logo-ElSalvador.png') }}" alt="Logo El Salvador">
             </td>
         </tr>
     </table>
 
-
-
-    <!-- INFORMACIÓN PRINCIPAL -->
+    <!-- INFORMACIÓN GENERAL -->
     <div class="section-title">Información General</div>
     <table>
         <tr>
             <th>Caja</th>
             <td>{{ $terminal->terminal_name }}</td>
-
             <th>Estación</th>
             <td>{{ $station->station_name }}</td>
         </tr>
@@ -162,7 +135,6 @@
         <tr>
             <th>Cajero</th>
             <td>{{ $cashier->name ?? 'N/A' }}</td>
-
             <th>ID Apertura</th>
             <td>{{ $opening->id }}</td>
         </tr>
@@ -170,13 +142,12 @@
         <tr>
             <th>Fecha Apertura</th>
             <td>{{ $opening->opening_date->format('d/m/Y H:i') }}</td>
-
             <th>Fecha Cierre</th>
             <td>{{ $closing->closing_date->format('d/m/Y H:i') }}</td>
         </tr>
     </table>
 
-    <!-- DETALLES DE PRODUCTOS -->
+    <!-- PRODUCTOS -->
     <div class="section-title">Detalle de Productos Vendidos</div>
     <table>
         <thead>
@@ -187,7 +158,6 @@
                 <th class="text-right">Total</th>
             </tr>
         </thead>
-
         <tbody>
             @foreach ($details as $item)
                 <tr>
@@ -200,68 +170,89 @@
         </tbody>
     </table>
 
-
-    <!-- TOTALES POR MÉTODO DE PAGO -->
-    <div class="section-title">Detalles de métodos de pago</div>
-    <table class="totals-table">
+    <!-- MÉTODOS DE PAGO -->
+    <table>
         <tr>
-            <th>Método</th>
-            <th class="text-right">Total</th>
-        </tr>
-        <tr>
-            <td>Efectivo</td>
+            <th>PAGOS EN EFECTIVO</th>
             <td class="text-right">${{ number_format($totalCash, 2) }}</td>
         </tr>
         <tr>
-            <td>Tarjeta</td>
+            <th>PAGOS EN POS</th>
             <td class="text-right">${{ number_format($totalCard, 2) }}</td>
         </tr>
         <tr>
-            <td>Chivo Wallet</td>
+            <th>PAGOS EN CHIVO WALLET</th>
             <td class="text-right">${{ number_format($totalChivo, 2) }}</td>
         </tr>
         <tr>
-            <th>Total General</th>
+            <th>TOTAL VENTA</th>
             <th class="text-right">${{ number_format($totalTransacted, 2) }}</th>
         </tr>
     </table>
 
+    <!-- RESUMEN CIERRE -->
+    <div class="section-title">Resumen Cierre</div>
+    <table>
+        <tr>
+            <th>Método</th>
+            <th class="text-right">Totales</th>
+        </tr>
 
-    <!-- RESUMEN DEL CIERRE -->
-    <div class="section-title">Resumen del Cierre</div>
-    <div class="summary-box">
-        <p><strong>Monto Esperado:</strong> ${{ number_format($closing->expected_amount, 2) }}</p>
-        <p><strong>Monto Real:</strong> ${{ number_format($closing->real_amount, 2) }}</p>
-        <p><strong>Diferencia:</strong> ${{ number_format($closing->closing_balance, 2) }}</p>
+        <tr>
+            <td>Total efectivo recibido</td>
+            <td class="text-right">${{ number_format($closing->real_amount, 2) }}</td>
+        </tr>
+
+        <tr>
+            <td>Total vouchers recibido</td>
+            <td class="text-right">${{ number_format($closing->pos_real_amount, 2) }}</td>
+        </tr>
+
+        <tr>
+            <td>Total Bitcoin</td>
+            <td class="text-right">${{ number_format($totalChivo, 2) }}</td>
+        </tr>
+
+        <tr>
+            <th>Total General</th>
+            <th class="text-right">
+                ${{ number_format($closing->real_amount + $closing->pos_real_amount + $totalChivo, 2) }}
+            </th>
+        </tr>
+
+        <tr>
+            <th>Diferencia</th>
+            <th class="text-right">${{ number_format($closing->closing_balance, 2) }}</th>
+        </tr>
 
         @if ($closing->notes)
-            <p><strong>Observaciones:</strong> {{ $closing->notes }}</p>
+            <tr>
+                <th>Observaciones</th>
+                <td>{{ $closing->notes }}</td>
+            </tr>
         @endif
-    </div>
+
+    </table>
 
     <!-- FIRMAS -->
-    <table class="signatures-table">
+    <table class="signatures">
         <tr>
             <td>
-                <div class="line"></div>
-                <div style="margin-top: 5px; font-size: 11px;">Nombre y firma</div>
-                <div style="font-size: 11px; margin-top: 2px;">Cajero/a</div>
+                <div class="sign-line"></div>
+                Nombre y firma<br>Cajero/a
             </td>
 
             <td>
-                <div class="line"></div>
-                <div style="margin-top: 5px; font-size: 11px;">Nombre y firma</div>
-                <div style="font-size: 11px; margin-top: 2px;">Supervisor de Cajas</div>
+                <div class="sign-line"></div>
+                Nombre y firma<br>Supervisor de Cajas
             </td>
 
             <td>
-                <div class="line"></div>
-                <div style="margin-top: 5px; font-size: 11px;">Nombre y firma</div>
-                <div style="font-size: 11px; margin-top: 2px;">Oficial de colecturía</div>
+                <div class="sign-line"></div>
+                Nombre y firma<br>Oficial de Colecturía
             </td>
         </tr>
     </table>
-
 
 </body>
 

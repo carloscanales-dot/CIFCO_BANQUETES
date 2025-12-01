@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('fairs', function (Blueprint $table) {
             $table->id();
-            $table->string('fair_name', 65);
+            $table->string('fair_name', 1000);
             $table->date('start_date');
             $table->date('end_date');
             $table->boolean('status')->default(false); // Más eficiente que integer si solo usas pocos estados

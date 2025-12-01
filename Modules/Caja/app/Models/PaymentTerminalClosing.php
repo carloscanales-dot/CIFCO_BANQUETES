@@ -21,6 +21,7 @@ class PaymentTerminalClosing extends Model
         'closing_date',
         'expected_amount',
         'real_amount',
+        'pos_real_amount', 
         'closing_balance',
         'notes',
     ];
@@ -29,6 +30,7 @@ class PaymentTerminalClosing extends Model
         'closing_date'     => 'datetime',
         'expected_amount'  => 'decimal:2',
         'real_amount'      => 'decimal:2',
+        'pos_real_amount'  => 'decimal:2',
         'closing_balance'  => 'decimal:2',
     ];
 
