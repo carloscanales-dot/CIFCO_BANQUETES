@@ -7,10 +7,30 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
+use Modules\Caja\Models\Transaction;
 use Modules\Ticket\Models\Station; // <-- importar Station
 
 class TransactionController extends Controller
 {
+    public function index()
+    {
+        $transactions = Transaction::with(['user', 'status', 'paymentMethod', 'station'])
+            ->latest()
+            ->paginate(10);
+
+        return Inertia::render('Caja/HistorialVentas', [
+            'transactions' => $transactions,
+        ]);
+    }
+
+    public function refund(Transaction $transaction)
+    {
+        $transaction->update(['status_id' => 4]);
+
+        return redirect()->back()->with('success', 'Transacción marcada como devolución.');
+    }
+
     public function store(Request $request)
     {
         $cartItems = $request->input('cartItems', []);

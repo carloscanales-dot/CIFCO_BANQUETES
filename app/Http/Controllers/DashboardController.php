@@ -43,6 +43,7 @@ class DashboardController extends Controller
             return Inertia::render('Ventas', [
                 'printer_ip' => null,
                 'station_name' => null,
+                'fair_name' => null, // <- nada que mostrar
                 'terminal_status' => $paymentTerminal?->status_id,
                 'payment_terminal_id' => $paymentTerminal?->id,
             ]);
@@ -53,9 +54,13 @@ class DashboardController extends Controller
             ->where('status', true)
             ->first(['ip_adress']);
 
+            // Obtener nombre de la feria desde la relación (fallback a null)
+        $fairName = $station->fair?->fair_name ?? $station->fair?->name ?? null;
+
         return Inertia::render('Ventas', [
             'printer_ip' => $printer?->ip_adress ?? null,
             'station_name' => $station->station_name,
+            'fair_name' => $fairName,
             'terminal_status' => $paymentTerminal?->status_id,
             'payment_terminal_id' => $paymentTerminal?->id,
         ]);
@@ -77,6 +82,7 @@ class DashboardController extends Controller
             return Inertia::render('Creditos', [
                 'printer_ip' => null,
                 'station_name' => null,
+                'fair_name' => null,
                 'terminal_status' => $paymentTerminal?->status_id,
                 'payment_terminal_id' => $paymentTerminal?->id,
             ]);
@@ -87,9 +93,12 @@ class DashboardController extends Controller
             ->where('status', true)
             ->first(['ip_adress']);
 
+        $fairName = $station->fair?->fair_name ?? $station->fair?->name ?? null;
+
         return Inertia::render('Creditos', [
             'printer_ip' => $printer?->ip_adress ?? null,
             'station_name' => $station->station_name,
+            'fair_name' => $fairName,
             'terminal_status' => $paymentTerminal?->status_id,
             'payment_terminal_id' => $paymentTerminal?->id,
         ]);

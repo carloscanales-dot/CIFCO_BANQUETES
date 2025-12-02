@@ -11,6 +11,7 @@ use Modules\Caja\App\Models\PaymentTerminal;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log; // <-- AQUI
 
 class PaymentTerminalSessionController extends Controller
 {
@@ -289,4 +290,124 @@ class PaymentTerminalSessionController extends Controller
             'Content-Type' => 'application/pdf',
         ]);
     }
+
+    public function current(Request $request)
+    {
+        $stationId = $request->query('station_id');
+
+        if (!$stationId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'station_id is required'
+            ], 400);
+        }
+
+        // Buscar terminal asociada a la estación (ajusta el where si tu columna es diferente)
+        $terminal = PaymentTerminal::with([
+            'station',
+            'user',
+            'openings' => function ($q) {
+                $q->with(['closing', 'transactions.paymentMethod'])
+                ->orderByDesc('opening_date')
+                ->limit(1);
+            }
+        ])->where('station_id', $stationId)->first();
+
+        if (!$terminal) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No terminal found for this station'
+            ], 404);
+        }
+
+        // Añadir totales por método para la apertura (si existe)
+        $opening = $terminal->openings->first() ?? null;
+
+        if ($opening) {
+            $transactions = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
+                ->where('status_id', 1) // completadas
+                ->get();
+
+            $opening->total_cash       = $transactions->where('payment_method_id', 1)->sum('amount');
+            $opening->total_card       = $transactions->where('payment_method_id', 2)->sum('amount');
+            $opening->total_chivo      = $transactions->where('payment_method_id', 3)->sum('amount');
+            $opening->total_transacted = $transactions->sum('amount');
+        }
+
+        return response()->json([
+            'success' => true,
+            'terminal' => $terminal
+        ]);
+    }
+
+    public function preclose(Request $request, $openingId)
+    {
+        $opening = PaymentTerminalOpening::with('terminal')->findOrFail($openingId);
+
+        if ($opening->is_closed ?? false) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta apertura ya fue cerrada.',
+            ], 409);
+        }
+
+        $data = $request->validate([
+            'user_id' => 'nullable|exists:users,id',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Obtener transacciones completadas de la apertura
+            $transactions = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
+                ->where('status_id', 1) // completada
+                ->get();
+
+            $totalCash   = $transactions->where('payment_method_id', 1)->sum('amount');
+            $totalCard   = $transactions->where('payment_method_id', 2)->sum('amount');
+            $totalChivo  = $transactions->where('payment_method_id', 3)->sum('amount');
+            $totalTransacted = $transactions->sum('amount');
+
+            // Cambiar el estado de la terminal a PRE_CIERRE (7)
+            $opening->terminal->update(['status_id' => 7]);
+
+            DB::commit();
+
+            // Preparar detalles por producto (opcional, para imprimir)
+            $details = \Modules\Caja\Models\TransactionDetail::with('product')
+                ->whereIn('transaction_id', $transactions->pluck('id'))
+                ->get()
+                ->groupBy('product_id')
+                ->map(function ($group) {
+                    return [
+                        'product_name' => $group->first()->product->product_name,
+                        'unit_price'   => $group->first()->unit_price,
+                        'quantity'     => $group->sum('quantity'),
+                        'total'        => $group->sum('total'),
+                    ];
+                })
+                ->values();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pre-cierre aplicado (estado 7).',
+                'totals'  => [
+                    'total_cash' => $totalCash,
+                    'total_card' => $totalCard,
+                    'total_chivo'=> $totalChivo,
+                    'total_transacted' => $totalTransacted,
+                ],
+                'details' => $details,
+            ]);
+        } catch (\Throwable $th) {
+            DB::rollBack();
+            Log::error('Preclose error: '.$th->getMessage(), ['opening_id' => $openingId]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al realizar pre-cierre.',
+                'error'   => $th->getMessage(),
+            ], 500);
+        }
+    }
+
 }

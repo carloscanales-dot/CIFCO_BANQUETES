@@ -1,24 +1,89 @@
 <template>
     <Head title="Ventas" />
     <CajaLayout>
-        <div v-if="props.terminal_status === 6">
-            <v-card
-                color="error"
-                border="start"
-                elevation="2"
-            >
-                <v-card-title class="text-h5 font-weight-bold">
-                    CAJA CERRADA
-                </v-card-title>
-                <v-card-text class="text-subtitle-1">
-                    No se pueden realizar ventas en esta terminal porque está cerrada.
-                </v-card-text>
-            </v-card>
-        </div>
+    <!-- Estado: CERRADA -->
+    <div v-if="props.terminal_status === 6">
+      <v-card color="error" border="start" elevation="2">
+        <v-card-title class="text-h5 font-weight-bold">CAJA CERRADA</v-card-title>
+        <v-card-text class="text-subtitle-1">
+          No se pueden realizar ventas en esta terminal porque está cerrada.
+        </v-card-text>
+      </v-card>
+    </div>
+
+    <!-- Estado: PRE-CIERRE -->
+    <div v-else-if="props.terminal_status === 7">
+      <v-card color="orange" elevation="2">
+        <v-card-title class="text-h6 font-weight-bold">CAJA EN PRE-CIERRE</v-card-title>
+        <v-card-text>
+          <p class="mb-2">
+            La caja está en <strong>PRE-CIERRE</strong>. El cierre definitivo lo realizará el administrador.
+          </p>
+
+          <v-divider class="my-2" />
+
+          <div v-if="precloseOpening">
+            <p class="mb-1">
+              <strong>Estación:</strong>
+              {{ props.station_name || currentTerminal?.station?.station_name || 'N/A' }}
+            </p>
+            <p class="mb-1"><strong>Cajero:</strong> {{ currentTerminal?.user?.name || 'N/A' }}</p>
+
+            <v-divider class="my-2" />
+
+            <p class="mb-1">Efectivo: <strong>${{ precloseTotals.total_cash.toFixed(2) }}</strong></p>
+            <p class="mb-1">Tarjeta:  <strong>${{ precloseTotals.total_card.toFixed(2) }}</strong></p>
+            <p class="mb-1">Chivo:    <strong>${{ precloseTotals.total_chivo.toFixed(2) }}</strong></p>
+
+            <v-divider class="my-2" />
+
+            <p class="font-weight-bold">Total: ${{ precloseTotals.total_transacted.toFixed(2) }}</p>
+
+            <!-- DETALLE DE ITEMS -->
+            <v-divider class="my-2" />
+            <div v-if="precloseDetails.length">
+              <v-list density="compact" lines="two">
+                <v-list-item v-for="(item, idx) in precloseDetails" :key="idx">
+                  <v-list-item-title>{{ item.product_name }}</v-list-item-title>
+                  <v-list-item-subtitle>Cantidad: {{ item.quantity }}</v-list-item-subtitle>
+
+                  <template v-slot:append>
+                    <div style="text-align:right; min-width:120px">
+                      <div class="text-caption">P. unit: ${{ Number(item.unit_price).toFixed(2) }}</div>
+                      <div class="font-weight-bold">${{ Number(item.total).toFixed(2) }}</div>
+                    </div>
+                  </template>
+                </v-list-item>
+              </v-list>
+            </div>
+
+            <div v-else class="text-white">
+              No hay detalle de items disponible.
+            </div>
+          </div>
+
+          <div v-else class="text-white">
+            No hay resumen disponible. Actualiza o presiona "Obtener resumen".
+          </div>
+        </v-card-text>
+
+        <v-card-actions>
+          <v-spacer />
+          <v-btn text @click="fetchTerminalForStation">Obtener resumen</v-btn>
+          <v-btn color="primary" :disabled="!canReprint" @click="reprintPreclose">
+            <v-icon left>mdi-printer</v-icon>
+            Reimprimir Voucher
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </div>
+
+<!-- Estado: ABIERTA u otros (sigue mostrando la UI normal) -->
+
         <div v-else>
             <v-row class="mb-2">
                 <v-col cols="12" class="d-flex justify-end">
-                    <v-btn color="secondary">Pre-cierre</v-btn>
+                    <v-btn color="secondary" @click="openPrecloseModal">Pre-cierre</v-btn>
                 </v-col>
             </v-row>
             <v-row>
@@ -116,6 +181,12 @@
     </v-card-actions>
   </v-card>
 </v-dialog>
+  <TerminalClosingModal
+    v-model="showClosingModal"
+    :mode="closingModalMode"
+    :terminal="currentTerminal"
+    @done="onModalDone"
+  />
 <v-snackbar
     v-model="snackbar.show"
     :color="snackbar.color"
@@ -133,10 +204,11 @@
 
 <script setup>
 import CajaLayout from '@/Layouts/CajaLayout.vue'
-import { Head, usePage } from '@inertiajs/vue3'
-import { ref, onMounted, computed, reactive } from 'vue'
+import { Head, usePage, router } from '@inertiajs/vue3'
+import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { useCartStore } from '@/Stores/cart'
 import { logoBitmap } from '../logoBitmap.js'
+import TerminalClosingModal from '@/Components/TerminalClosingModal.vue'
 import axios from 'axios'
 
 const page = usePage();
@@ -144,6 +216,203 @@ const page = usePage();
 const products = ref([])
 const cart = useCartStore()
 const pedidoCounter = ref(1);
+const showClosingModal = ref(false)
+const closingModalMode = ref('preclose') // 'open' | 'close' | 'preclose'
+const currentTerminal = ref(null)
+const loadingTerminal = ref(false) // inicialización correcta
+
+// computed para abrir/resumen del pre-cierre
+const precloseOpening = computed(() => {
+  return currentTerminal.value?.openings?.[0] ?? null
+})
+
+const precloseTotals = computed(() => {
+  const o = currentTerminal.value?.openings?.[0] ?? {}
+  return {
+    total_cash: Number(o.total_cash ?? o.total_cash_amount ?? 0),
+    total_card: Number(o.total_card ?? o.total_card_amount ?? 0),
+    total_chivo: Number(o.total_chivo ?? o.total_chivo_amount ?? 0),
+    total_transacted: Number(o.total_transacted ?? o.total_amount ?? 0),
+  }
+})
+
+const precloseDetails = computed(() => {
+  const o = currentTerminal.value?.openings?.[0] ?? {}
+  return Array.isArray(o.details) ? o.details : []
+})
+
+const canReprint = computed(() => {
+  return !!printer && precloseTotals.value.total_transacted > 0
+})
+
+// abrir modal preclose (asegura que currentTerminal esté cargada)
+const openPrecloseModal = async () => {
+  if (loadingTerminal.value) return
+  loadingTerminal.value = true
+
+  try {
+    if (!currentTerminal.value) {
+      const found = await fetchTerminalForStation()
+      if (!found) {
+        showToast('No se encontró la terminal o no hay apertura activa en esta estación.', 'error')
+        return
+      }
+    }
+
+    // Si la terminal ya está en PRE-CIERRE (7) no permitir abrir modal otra vez
+    if (currentTerminal.value?.status_id === 7 || props.terminal_status === 7) {
+      showToast('La terminal ya está en Pre-cierre.', 'warning')
+      return
+    }
+
+    closingModalMode.value = 'preclose'
+    showClosingModal.value = true
+  } finally {
+    loadingTerminal.value = false
+  }
+}
+
+// intenta resolver la terminal del backend a partir de la estación
+const fetchTerminalForStation = async () => {
+  const stationId = getStationId()
+  if (!stationId) return null
+
+  try {
+    // RUTA ASUMIDA: backend que devuelve la terminal / apertura actual para la estación
+    const resp = await axios.get('/terminal-sessions/current', { params: { station_id: stationId } })
+    if (resp.data && resp.data.terminal) {
+      currentTerminal.value = resp.data.terminal
+      return currentTerminal.value
+    }
+    return null
+  } catch (err) {
+    console.error('Error fetching terminal', err)
+    return null
+  }
+}
+
+// handler cuando el modal emite done
+const onModalDone = async (evt) => {
+  if (evt.action === 'preclose' && evt.payload) {
+    // normalizar totals
+    const totals = evt.payload.totals ?? evt.payload ?? {}
+    const totalsNormalized = {
+      total_cash: Number(totals.total_cash ?? totals.cash ?? 0),
+      total_card: Number(totals.total_card ?? totals.card ?? 0),
+      total_chivo: Number(totals.total_chivo ?? totals.chivo ?? 0),
+      total_transacted: Number(totals.total_transacted ?? totals.total ?? 0),
+    }
+
+    // dentro de onModalDone, después de totalsNormalized...
+    const details = evt.payload.details ?? [];
+
+    // si tenemos currentTerminal, guarda los totales y detalles ahí para que la card muestre inmediatamente
+    if (currentTerminal.value) {
+      currentTerminal.value.openings = currentTerminal.value.openings || []
+      const opening = currentTerminal.value.openings[0] ?? {}
+      opening.total_cash = totalsNormalized.total_cash
+      opening.total_card = totalsNormalized.total_card
+      opening.total_chivo = totalsNormalized.total_chivo
+      opening.total_transacted = totalsNormalized.total_transacted
+
+      // <- Guarda el detalle por producto (esperamos objetos con product_name, unit_price, quantity, total)
+      opening.details = details.map(d => ({
+        product_name: d.product_name ?? d.name ?? 'N/A',
+        unit_price: Number(d.unit_price ?? d.unit_price_amount ?? 0),
+        quantity: Number(d.quantity ?? d.qty ?? 0),
+        total: Number(d.total ?? d.subtotal ?? 0),
+      }))
+
+      currentTerminal.value.openings[0] = opening
+    }
+
+    // si tenemos currentTerminal, guarda los totales ahí para que la card muestre inmediatamente
+    if (currentTerminal.value) {
+      currentTerminal.value.openings = currentTerminal.value.openings || []
+      // Si ya existe opening[0], mergea los totales; si no, crea un objeto básico
+      const opening = currentTerminal.value.openings[0] ?? {}
+      opening.total_cash = totalsNormalized.total_cash
+      opening.total_card = totalsNormalized.total_card
+      opening.total_chivo = totalsNormalized.total_chivo
+      opening.total_transacted = totalsNormalized.total_transacted
+      currentTerminal.value.openings[0] = opening
+    }
+
+    // Intenta imprimir si hay impresora
+    if (printer && totalsNormalized.total_transacted > 0) {
+      try {
+        await printPrecloseReceipt(totalsNormalized)
+        showToast('Pre-cierre realizado e impreso.', 'success')
+      } catch (e) {
+        console.error(e)
+        showToast('Pre-cierre realizado, pero falló la impresión.', 'warning')
+      }
+    } else {
+      showToast('Pre-cierre realizado.', 'success')
+    }
+
+    // no necesitamos forzar router.reload() — ya actualizamos el estado localmente
+  }
+
+  if (evt.action === 'close' || evt.action === 'open') {
+    router.reload()
+  }
+}
+
+// función de impresión del PRE-CIERRE (ejemplo basado en tu printReceipt)
+const printPrecloseReceipt = async (closing) => {
+  // closing puede ser el objeto totalsNormalized o incluir .details (array)
+  const details = closing.details ?? currentTerminal.value?.openings?.[0]?.details ?? []
+
+  const printOncePreclose = () => {
+    printer.addTextAlign(printer.ALIGN_CENTER)
+    printer.addTextStyle(false, false, true, printer.COLOR_1)
+    printer.addText(`${props.fair_name || 'CIFCO'}\n`)
+    printer.addTextStyle(false, false, false, printer.COLOR_1)
+    printer.addText('------ RESUMEN PRE-CIERRE ------\n')
+    const now = new Date()
+    printer.addText(`${now.toLocaleDateString('es-ES')} ${now.toLocaleTimeString('es-ES')}\n`)
+    printer.addText(`ESTACIÓN: ${props.station_name || 'N/A'}\n`)
+    printer.addText(`CAJERO: ${page.props.auth.user.name || 'N/A'}\n`)
+    printer.addText('-----------------------------\n')
+    printer.addText(`EFECTIVO: $${(closing.total_cash ?? 0).toFixed(2)}\n`)
+    printer.addText(`TARJETA: $${(closing.total_card ?? 0).toFixed(2)}\n`)
+    printer.addText(`CHIVO:   $${(closing.total_chivo ?? 0).toFixed(2)}\n`)
+    printer.addText('-----------------------------\n')
+
+    // cabecera detalle
+    if (details.length) {
+      printer.addText("CANT  ARTÍCULO            P.UNIT  SUBTOTAL\n")
+      details.forEach(item => {
+        const qty = String(item.quantity).padEnd(4)
+        const name = (item.product_name || '').trim()
+        const unit = Number(item.unit_price || 0).toFixed(2).padStart(6)
+        const subtotal = Number(item.total || 0).toFixed(2).padStart(8)
+        const max = 18
+        const firstLine = name.slice(0, max).padEnd(max)
+        printer.addText(`${qty} ${firstLine} ${unit} ${subtotal}\n`)
+        // si el nombre es largo, imprime siguientes líneas
+        for (let i = max; i < name.length; i += max) {
+          printer.addText(`     ${name.slice(i, i + max)}\n`)
+        }
+      })
+      printer.addText('-----------------------------\n')
+    }
+
+    printer.addTextStyle(false, false, true, printer.COLOR_1)
+    printer.addText(`TOTAL: $${(closing.total_transacted ?? 0).toFixed(2)}\n`)
+    printer.addTextStyle(false, false, false, printer.COLOR_1)
+    printer.addText('-----------------------------\n')
+    printer.addText('PRE-CIERRE\n')
+    printer.addText('GRACIAS\n')
+    printer.addFeedLine(2)
+    printer.addCut(printer.CUT_FEED)
+  }
+
+  printOncePreclose()
+  printer.send()
+}
+
 
 const props = defineProps({
     printer_ip: String,
@@ -174,6 +443,37 @@ const showToast = (message, color = "success") => {
   snackbar.show = true;
 };
 
+// reimprimir preclose
+const reprintPreclose = async () => {
+  try {
+    // Asegúrate de tener la apertura/resumen
+    if (!currentTerminal.value?.openings?.[0]) {
+      const found = await fetchTerminalForStation()
+      if (!found) {
+        showToast('No se encontró la apertura/pre-cierre.', 'error')
+        return
+      }
+    }
+
+    const totals = precloseTotals.value
+
+    if (!printer) {
+      showToast('Impresora no conectada.', 'error')
+      return
+    }
+
+    if (totals.total_transacted <= 0) {
+      showToast('No hay transacciones para imprimir.', 'warning')
+      return
+    }
+
+    await printPrecloseReceipt(totals)
+    showToast('Voucher reimpreso correctamente.', 'success')
+  } catch (err) {
+    console.error('Error reimprimiendo pre-cierre:', err)
+    showToast('Ocurrió un error al reimprimir.', 'error')
+  }
+}
 
 // helper: station id (en scope global del componente)
 const getStationId = () => {
@@ -243,14 +543,20 @@ const confirmarPago = async () => {
   }
 }
 
-// Cargar productos
+// Cargar productos + conectar impresora
 onMounted(async () => {
     if (props.terminal_status === 6) {
-    showToast(
-      "No se pueden realizar ventas en esta terminal porque está cerrada.",
-      "error"
-    );
-  }
+      showToast(
+        "No se pueden realizar ventas en esta terminal porque está cerrada.",
+        "error"
+      );
+    }
+
+    // Si la terminal ya está en pre-cierre al montar, carga el resumen
+    if (props.terminal_status === 7) {
+      await fetchTerminalForStation()
+    }
+
     await loadStationProducts();
 
     if (!props.printer_ip) {
@@ -274,6 +580,13 @@ onMounted(async () => {
         });
     });
 });
+
+// refrescar cuando cambie el estado de la terminal (ej: a pre-cierre)
+watch(() => props.terminal_status, async (newVal) => {
+  if (newVal === 7) {
+    await fetchTerminalForStation()
+  }
+})
 
 const loadStationProducts = async () => {
     try {
@@ -303,13 +616,12 @@ const printReceipt = async (paymentMethodValue, efectivoValue) => {
         return;
     }
 
-      // obtener y validar stationId
-      const stationId = getStationId()
-      if (!stationId) {
-        showToast('Estación inválida. Contacte al administrador.', "error");
-        return
-      }
-
+    // obtener y validar stationId
+    const stationId = getStationId()
+    if (!stationId) {
+      showToast('Estación inválida. Contacte al administrador.', 'error')
+      return
+    }
 
     try {
         // debug: mostrar payload en consola
@@ -442,4 +754,3 @@ const printReceipt = async (paymentMethodValue, efectivoValue) => {
     }
 };
 </script>
-

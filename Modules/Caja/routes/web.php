@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Modules\Caja\Http\Controllers\CajaController;
 use Modules\Caja\Http\Controllers\PaymentTerminalController;
 use Modules\Caja\Http\Controllers\PaymentTerminalSessionController;
+use Modules\Caja\Http\Controllers\TransactionController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Rutas principales de caja
@@ -24,14 +25,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Vista principal (Inertia)
         Route::get('/', [PaymentTerminalSessionController::class, 'index'])->name('index');
 
+        // Obtener la terminal actual por station_id
+        Route::get('current', [PaymentTerminalSessionController::class, 'current'])->name('current');
+
+        // Pre-cierre (crea registro en payment_terminal_closing con estado PRE_CIERRE)
+        Route::post('{openingId}/preclose', [PaymentTerminalSessionController::class, 'preclose'])->name('preclose');
+
         // Crear apertura (Axios)
-        Route::post('/open', [PaymentTerminalSessionController::class, 'open'])->name('open');
+        Route::post('open', [PaymentTerminalSessionController::class, 'open'])->name('open');
 
         // Registrar cierre (Axios)
-        Route::post('/{id}/close', [PaymentTerminalSessionController::class, 'close'])->name('close');
+        Route::post('{openingId}/close', [PaymentTerminalSessionController::class, 'close'])->name('close');
 
         // Exportar (generar y devolver) PDF del cierre por closingId
-        Route::get('/closing/{closingId}/export', [PaymentTerminalSessionController::class, 'exportClosing'])
+        Route::get('closing/{closingId}/export', [PaymentTerminalSessionController::class, 'exportClosing'])
             ->name('closing.export');
     });
+
+            // routes (dentro del group 'auth,verified')
+        Route::get('/historial-ventas', [\Modules\Caja\Http\Controllers\TransactionController::class, 'index'])
+            ->name('historial-ventas.index');
+
+        Route::post('/historial-ventas/{transaction}/refund', [\Modules\Caja\Http\Controllers\TransactionController::class, 'refund'])
+            ->name('historial-ventas.refund');
+
 });
