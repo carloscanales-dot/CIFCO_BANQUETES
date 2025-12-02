@@ -145,7 +145,14 @@
             <th>Fecha Cierre</th>
             <td>{{ $closing->closing_date->format('d/m/Y H:i') }}</td>
         </tr>
+        <tr>
+            <th colspan ="2">Fondo de cambio</th>
+            <td colspan="2" class="text-right"><strong>${{ number_format($opening->change_fund, 2) }}</strong></td>
+        </tr>
+
+
     </table>
+
 
     <!-- PRODUCTOS -->
     <div class="section-title">Detalle de Productos Vendidos</div>

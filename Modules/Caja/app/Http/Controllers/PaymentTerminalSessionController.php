@@ -72,7 +72,9 @@ class PaymentTerminalSessionController extends Controller
                 $opening->total_chivo      = $transactions->where('payment_method_id', 3)->sum('amount');
                 $opening->total_transacted = $transactions->sum('amount');
 
-                $opening->expected_amount  = $opening->opening_amount + $opening->total_cash;
+                $opening->expected_amount  = $opening->total_cash;
+
+                $opening->change_fund = $opening->opening_amount;
             }
 
             return $terminal;
@@ -152,25 +154,23 @@ class PaymentTerminalSessionController extends Controller
         try {
 
             // ==========================================
-            // 1️⃣ Total de transacciones en EFECTIVO
+            // Total de transacciones en EFECTIVO
             // ==========================================
             $cashTransactionsTotal = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
                 ->where('status_id', 1)
-                ->where('payment_method_id', 1) // SOLO EFECTIVO
-                ->sum('amount');
+                ->whereIn('payment_method_id', [1, 2])->sum('amount');
+            // ==========================================
+            // Calcular monto esperado (apertura + efectivo)
+            // ==========================================
+            $expectedAmount = $cashTransactionsTotal;
 
             // ==========================================
-            // 2️⃣ Calcular monto esperado (apertura + efectivo)
-            // ==========================================
-            $expectedAmount = $opening->opening_amount + $cashTransactionsTotal;
-
-            // ==========================================
-            // 3️⃣ Calcular diferencia (real - esperado)
+            // Calcular diferencia (real - esperado)
             // ==========================================
             $closingBalance = $data['real_amount'] - $expectedAmount;
 
             // ==========================================
-            // 4️⃣ Crear cierre con montos correctos
+            // Crear cierre con montos correctos
             // ==========================================
             $closing = PaymentTerminalClosing::create([
                 'payment_terminal_opening_id' => $opening->id,

@@ -194,6 +194,11 @@ function exportClosing(item) {
                             <p class="mb-1">
                                 <strong>Cajero:</strong> {{ selectedTerminal?.user?.name ?? 'Sin asignar' }}
                             </p>
+                            
+                            <p class="mb-1">
+                                <strong>Fondo de cambio:</strong> ${{ selectedTerminal?.openings?.[0]?.change_fund ?? 0
+                                }}
+                            </p>
                         </div>
 
                         <!-- TOTALES ANTES DE CIERRE -->
@@ -222,24 +227,6 @@ function exportClosing(item) {
                                 <strong>Total transaccionado:</strong>
                                 ${{ selectedTerminal?.openings?.[0]?.total_transacted ?? 0 }}
                             </p>
-                            <v-divider class="my-3" />
-
-                            <!-- TOTAL GENERAL -->
-
-                            <!-- EFECTIVO ESPERADO (Viene directo del backend) -->
-                            <p class="mb-1">
-                                Total efectivo esperado:
-                                <strong>${{ selectedTerminal?.openings?.[0]?.expected_amount ?? 0 }}</strong>
-                            </p>
-                            <p class="mb-1">
-                                Total esperado en tarjeta:
-                                <strong>${{ selectedTerminal?.openings?.[0]?.total_card ?? 0 }}</strong>
-                            </p>
-                            <p class="mb-1">
-                                Total esperado en Chivo Wallet:
-                                <strong>${{ selectedTerminal?.openings?.[0]?.total_chivo ?? 0 }}</strong>
-                            </p>
-
                             <v-divider class="my-3" />
                         </div>
 
