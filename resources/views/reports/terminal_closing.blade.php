@@ -229,8 +229,11 @@
 
         <tr>
             <th>Diferencia</th>
-            <th class="text-right">${{ number_format($closing->closing_balance, 2) }}</th>
+            <th class="text-right">
+                ${{ number_format(abs($closing->closing_balance), 2) }}
+            </th>
         </tr>
+
 
         @if ($closing->notes)
             <tr>

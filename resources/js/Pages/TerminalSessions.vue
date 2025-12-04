@@ -194,10 +194,11 @@ function exportClosing(item) {
                             <p class="mb-1">
                                 <strong>Cajero:</strong> {{ selectedTerminal?.user?.name ?? 'Sin asignar' }}
                             </p>
-                            
-                            <p class="mb-1">
-                                <strong>Fondo de cambio:</strong> ${{ selectedTerminal?.openings?.[0]?.change_fund ?? 0
-                                }}
+
+                            <!-- SOLO mostrar fondo de cambio en cierre -->
+                            <p v-if="modalMode === 'close'" class="mb-1">
+                                <strong>Fondo de cambio:</strong>
+                                ${{ selectedTerminal?.openings?.[0]?.change_fund ?? 0 }}
                             </p>
                         </div>
 
