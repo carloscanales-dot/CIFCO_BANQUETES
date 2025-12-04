@@ -168,7 +168,7 @@ class PaymentTerminalSessionController extends Controller
             // ==========================================
             // Calcular diferencia (real - esperado)
             // ==========================================
-            $closingBalance = $data['real_amount'] - $expectedAmount;
+            $closingBalance = ($data['real_amount'] + $data['pos_real_amount']) - $expectedAmount;
 
             // ==========================================
             // Crear cierre con montos correctos
@@ -308,8 +308,8 @@ class PaymentTerminalSessionController extends Controller
             'user',
             'openings' => function ($q) {
                 $q->with(['closing', 'transactions.paymentMethod'])
-                ->orderByDesc('opening_date')
-                ->limit(1);
+                    ->orderByDesc('opening_date')
+                    ->limit(1);
             }
         ])->where('station_id', $stationId)->first();
 
@@ -394,14 +394,14 @@ class PaymentTerminalSessionController extends Controller
                 'totals'  => [
                     'total_cash' => $totalCash,
                     'total_card' => $totalCard,
-                    'total_chivo'=> $totalChivo,
+                    'total_chivo' => $totalChivo,
                     'total_transacted' => $totalTransacted,
                 ],
                 'details' => $details,
             ]);
         } catch (\Throwable $th) {
             DB::rollBack();
-            Log::error('Preclose error: '.$th->getMessage(), ['opening_id' => $openingId]);
+            Log::error('Preclose error: ' . $th->getMessage(), ['opening_id' => $openingId]);
             return response()->json([
                 'success' => false,
                 'message' => 'Error al realizar pre-cierre.',
@@ -409,5 +409,4 @@ class PaymentTerminalSessionController extends Controller
             ], 500);
         }
     }
-
 }
