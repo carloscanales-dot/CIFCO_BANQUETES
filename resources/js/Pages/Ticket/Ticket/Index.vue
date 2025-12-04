@@ -26,6 +26,8 @@ const filterForm = reactive({
   uuid: null,
   status: null,
   product_id: null,
+  start_id: null,
+  end_id: null,
 })
 
 const deleteItem = (item) => {
@@ -117,6 +119,14 @@ onMounted(() => {
           </VCol>
         </VRow>
         <VRow>
+          <VCol cols="12" md="6" sm="12">
+            <VTextField v-model.number="filterForm.start_id" label="ID inicial" type="number" hide-details clearable></VTextField>
+          </VCol>
+          <VCol cols="12" md="6" sm="12">
+            <VTextField v-model.number="filterForm.end_id" label="ID final" type="number" hide-details clearable></VTextField>
+          </VCol>
+        </VRow>
+        <VRow>
           <VCol cols="12" md="12" sm="12">
             <VBtnToggle variant="tonal" divided>
               <VBtn prepend-icon="mdi-filter" text="Filtrar" @click="applyFilter"></VBtn>
@@ -170,6 +180,7 @@ export default {
   data() {
     return {
       headers: [
+        { title: 'ID', key: 'ticket_id' },
         { title: 'Producto', key: 'product_name' },
         { title: 'UUID', key: 'uuid' },
         { title: 'Precio', key: 'unit_price' },

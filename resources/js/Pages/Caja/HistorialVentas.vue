@@ -45,18 +45,6 @@
             <template #item.payment_method="{ item }">
               {{ getPaymentMethodLabel(item) }}
             </template>
-
-            <!-- Actions column -->
-            <template #item.actions="{ item }">
-              <v-btn
-                v-if="!isRefunded(item)"
-                color="orange"
-                small
-                @click="openRefundDialog(item)"
-              >
-                Devolución
-              </v-btn>
-            </template>
           </v-data-table>
 
           <div v-else class="text-center pa-6">
@@ -75,22 +63,6 @@
       </v-card>
     </v-container>
 
-    <!-- Confirmación devolución -->
-    <v-dialog v-model="refundDialog" max-width="520">
-      <v-card>
-        <v-card-title>Confirmar Devolución</v-card-title>
-        <v-card-text>
-          ¿Está seguro que desea marcar la transacción
-          <strong v-if="selectedTransaction"> #{{ selectedTransaction.id }}</strong>
-          como devolución? Esta acción no se puede deshacer.
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn text @click="refundDialog = false">Cancelar</v-btn>
-          <v-btn color="orange" @click="confirmRefund" :loading="loading">Confirmar</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </CajaLayout>
 </template>
 
@@ -107,8 +79,6 @@ const props = defineProps({
 /* State */
 const loading = ref(false)
 const page = ref(props.transactions?.current_page ?? 1)
-const refundDialog = ref(false)
-const selectedTransaction = ref(null)
 
 /* Safe paginator */
 const transactionsSafe = computed(() => {
@@ -128,12 +98,11 @@ const hasData = computed(() => transactionsSafe.value.data.length > 0)
 const headers = [
   { title: 'ID', key: 'id', value: 'id', align: 'start' },
   { title: 'Usuario', key: 'user', value: 'user' },
-  { title: 'Estación', key: 'station', value: 'station' },
+  { title: 'Estación', key: 'station', value: 'station.station_name' },
   { title: 'Monto', key: 'amount', value: 'amount' },
   { title: 'Método Pago', key: 'payment_method', value: 'payment_method' },
-  { title: 'Estado', key: 'status', value: 'status' },
+  { title: 'Estado', key: 'status', value: 'status.status' },
   { title: 'Fecha', key: 'created_at', value: 'created_at' },
-  { title: 'Acciones', key: 'actions', value: 'actions', align: 'end' },
 ]
 
 /* Helpers — defensas frente a distintas estructuras del objeto */
@@ -141,7 +110,7 @@ function getUserName(tx) {
   return tx?.user?.name ?? tx?.user_name ?? 'N/A'
 }
 function getStationName(tx) {
-  return tx?.station?.name ?? tx?.station_name ?? 'N/A'
+  return tx?.station?.station_name ?? tx?.station_name ?? 'N/A'
 }
 function getPaymentMethodLabel(tx) {
   const pm = tx?.payment_method ?? tx?.paymentMethod
@@ -149,7 +118,7 @@ function getPaymentMethodLabel(tx) {
   return tx?.payment_method_label ?? tx?.paymentMethodLabel ?? 'N/A'
 }
 function getStatusName(tx) {
-  return tx?.status?.name ?? tx?.status_name ?? (tx.status_id === 4 ? 'Devolución' : 'N/A')
+  return tx?.status?.status ?? tx?.status_name ?? (tx.status_id === 4 ? 'Devolución' : 'N/A')
 }
 function getStatusColor(tx) {
   return tx?.status?.color ?? tx?.status_color ?? (tx.status_id === 4 ? 'grey' : 'primary')
@@ -159,34 +128,6 @@ function getAmount(tx) {
 }
 function getDate(tx) {
   return tx?.transaction_date ?? tx?.created_at ?? tx?.date ?? null
-}
-function isRefunded(tx) {
-  return Boolean(tx?.is_refunded) || Number(tx?.status_id) === 4
-}
-
-/* Actions */
-const openRefundDialog = (tx) => {
-  selectedTransaction.value = tx
-  refundDialog.value = true
-}
-
-const confirmRefund = () => {
-  if (!selectedTransaction.value) return
-  loading.value = true
-
-  const id = selectedTransaction.value.id
-
-  router.post(`/historial-ventas/${id}/refund`, {}, {
-    onSuccess: () => {
-      // recargar la página de listado (paginada)
-      router.get('/historial-ventas', { page: page.value }, { preserveState: false })
-    },
-    onFinish: () => {
-      loading.value = false
-      refundDialog.value = false
-      selectedTransaction.value = null
-    }
-  })
 }
 
 const onPageChange = (newPage) => {

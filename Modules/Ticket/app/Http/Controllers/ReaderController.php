@@ -170,6 +170,12 @@ class ReaderController extends Controller
             ->when($request->get('uuid'), function ($query, $uuid) {
                 return $query->where('uuid', 'like', '%' . $uuid . '%');
             })
+            ->when($request->get('start_id'), function ($query, $start_id) {
+                return $query->where('ticket_id', '>=', $start_id);
+            })
+            ->when($request->get('end_id'), function ($query, $end_id) {
+                return $query->where('ticket_id', '<=', $end_id);
+            })
             ->select('product_name', 'uuid', 'unit_price', 'ticket_id')
             ->get();
     }

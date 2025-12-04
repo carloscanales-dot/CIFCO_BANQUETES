@@ -183,7 +183,7 @@ class TicketController extends Controller
      * @param type $field
      * @return type
      */
-    protected function setField($field): array
+    protected function setField($field)
     {
         $fieldList = [
             'uuid' => [
@@ -198,6 +198,14 @@ class TicketController extends Controller
                 'field' => 'product_id',
                 'operator' => 'equal'
             ],
+            'start_id' => [
+                'field' => 'ticket_id',
+                'operator' => 'greaterThan'
+            ],
+            'end_id' => [
+                'field' => 'ticket_id',
+                'operator' => 'lessThan'
+            ]
         ];
 
         return $fieldList[$field] ?? null;
