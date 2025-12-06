@@ -66,6 +66,7 @@ class PaymentTerminalSessionController extends Controller
             if ($opening) {
                 $transactions = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
                     ->where('status_id', 1)
+                    ->where('transaction_type_id', 1)
                     ->get();
 
                 $opening->total_cash       = $transactions->where('payment_method_id', 1)->sum('amount');
@@ -159,6 +160,7 @@ class PaymentTerminalSessionController extends Controller
             // ==========================================
             $cashTransactionsTotal = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
                 ->where('status_id', 1)
+                ->where('transaction_type_id', 1)
                 ->whereIn('payment_method_id', [1, 2])->sum('amount');
             // ==========================================
             // Calcular monto esperado (apertura + efectivo)
@@ -225,6 +227,7 @@ class PaymentTerminalSessionController extends Controller
         $transactions = \Modules\Caja\Models\Transaction::with('paymentMethod')
             ->where('payment_terminal_opening_id', $opening->id)
             ->where('status_id', 1) // completada
+            ->where('transaction_type_id', 1)
             ->get();
 
         // Totales por método de pago
@@ -326,6 +329,7 @@ class PaymentTerminalSessionController extends Controller
         if ($opening) {
             $transactions = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
                 ->where('status_id', 1) // completadas
+                ->where('transaction_type_id', 1)
                 ->get();
 
             $opening->total_cash       = $transactions->where('payment_method_id', 1)->sum('amount');
@@ -361,6 +365,7 @@ class PaymentTerminalSessionController extends Controller
             // Obtener transacciones completadas de la apertura
             $transactions = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
                 ->where('status_id', 1) // completada
+                ->where('transaction_type_id', 1)
                 ->get();
 
             $totalCash   = $transactions->where('payment_method_id', 1)->sum('amount');

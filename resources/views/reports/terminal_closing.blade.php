@@ -147,7 +147,7 @@
         </tr>
         <tr>
             <th colspan ="2">Fondo de cambio</th>
-            <td colspan="2" class="text-right"><strong>${{ number_format($opening->change_fund, 2) }}</strong></td>
+            <td colspan="2" class="text-right"><strong>${{ number_format($opening->opening_amount ?? 0, 2) }}</strong></td>
         </tr>
 
 

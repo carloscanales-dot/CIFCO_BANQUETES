@@ -15,7 +15,20 @@ class TransactionController extends Controller
 {
     public function index()
     {
-        $transactions = Transaction::with(['user', 'status', 'paymentMethod', 'station'])
+        /** @var \App\Models\User|null $user */
+        $user = Auth::user();
+
+        if (! $user) {
+            abort(403, 'Usuario no autenticado');
+        }
+
+        $stationIds = $user->stations()->pluck('station_id');
+
+            // Eager load relations and also select the transaction type name via JOIN
+            $transactions = Transaction::select('transactions.*', 'transaction_type.transaction_type as transaction_type_name')
+                ->leftJoin('transaction_type', 'transactions.transaction_type_id', '=', 'transaction_type.transaction_type_id')
+                ->with(['user', 'status', 'paymentMethod', 'station'])
+            ->whereIn('station_id', $stationIds)
             ->latest()
             ->paginate(10);
 
@@ -40,6 +53,8 @@ class TransactionController extends Controller
         $station_id = (int) $request->input('station_id', 0); // NO usar 1 por defecto
         $payment_method = (int) $request->input('payment_method', 0); // 0 = no informado
         $employee_id = (int) $request->input('employee_id', 0); // opcional
+        $transaction_type_id = (int) $request->input('transaction_type_id', 1); // 1 = Venta, 2 = Venta Empleado
+
 
         // Opcional: loguear payload para depuración (quítalo en prod)
         Log::debug('Transactions.store payload', [
@@ -47,6 +62,7 @@ class TransactionController extends Controller
             'station_id' => $station_id,
             'payment_method' => $payment_method,
             'employee_id' => $employee_id,
+            'transaction_type_id' => $transaction_type_id,
             'total' => $total,
             'items_count' => count($cartItems),
         ]);
@@ -89,7 +105,7 @@ class TransactionController extends Controller
                 'station_id' => $station_id,
                 'amount' => $total,
                 'transaction_date' => now(),
-                'transaction_type_id' => 1, // 1 = venta normal
+                'transaction_type_id' => $transaction_type_id, // 1 = venta normal
                 'status_id' => 1,
                 'payment_method_id' => $payment_method,
                 'payment_terminal_opening_id' => $terminalOpening->id,

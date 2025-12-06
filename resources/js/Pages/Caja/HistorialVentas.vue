@@ -1,4 +1,5 @@
 <template>
+  <Head title="Historial de Ventas" />
   <CajaLayout>
     <v-container>
       <v-card>
@@ -45,6 +46,16 @@
             <template #item.payment_method="{ item }">
               {{ getPaymentMethodLabel(item) }}
             </template>
+
+            <!-- N. Apertura column -->
+            <template #item.payment_terminal_opening_id="{ item }">
+              {{ getPaymentTerminalOpeningId(item) }}
+            </template>
+
+            <!-- T. Trasaccion column -->
+            <template #item.transaction_type_id="{ item }">
+              {{ getTransactionTypeName(item) }}
+            </template>
           </v-data-table>
 
           <div v-else class="text-center pa-6">
@@ -69,7 +80,7 @@
 <script setup>
 import CajaLayout from '@/Layouts/CajaLayout.vue'
 import { ref, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, Head} from '@inertiajs/vue3'
 
 /* Props */
 const props = defineProps({
@@ -99,8 +110,10 @@ const headers = [
   { title: 'ID', key: 'id', value: 'id', align: 'start' },
   { title: 'Usuario', key: 'user', value: 'user' },
   { title: 'Estación', key: 'station', value: 'station.station_name' },
+  { title: 'N. Apertura', key: 'payment_terminal_opening_id' },
   { title: 'Monto', key: 'amount', value: 'amount' },
   { title: 'Método Pago', key: 'payment_method', value: 'payment_method' },
+  { title: 'T. Transacción', key: 'transaction_type_id', value: 'transaction_type_id' },
   { title: 'Estado', key: 'status', value: 'status.status' },
   { title: 'Fecha', key: 'created_at', value: 'created_at' },
 ]
@@ -111,6 +124,9 @@ function getUserName(tx) {
 }
 function getStationName(tx) {
   return tx?.station?.station_name ?? tx?.station_name ?? 'N/A'
+}
+function getPaymentTerminalOpeningId(tx) {
+  return tx?.payment_terminal_opening_id ?? 'N/A'
 }
 function getPaymentMethodLabel(tx) {
   const pm = tx?.payment_method ?? tx?.paymentMethod
@@ -128,6 +144,16 @@ function getAmount(tx) {
 }
 function getDate(tx) {
   return tx?.transaction_date ?? tx?.created_at ?? tx?.date ?? null
+}
+
+function getTransactionTypeName(tx) {
+  return tx?.transaction_type?.name
+    ?? tx?.transactionType?.name
+    ?? tx?.transaction_type_name
+    ?? tx?.transactionTypeName
+    ?? tx?.transaction_type_id
+    ?? tx?.transaction_type_id ?? (tx?.transaction_type_id ? String(tx.transaction_type_id) : null)
+    ?? 'N/A'
 }
 
 const onPageChange = (newPage) => {

@@ -70,7 +70,7 @@
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="fetchTerminalForStation">Obtener resumen</v-btn>
-          <v-btn color="primary" :disabled="!canReprint" @click="reprintPreclose">
+          <v-btn color="primary" @click="reprintPreclose">
             <v-icon left>mdi-printer</v-icon>
             Reimprimir Voucher
           </v-btn>
@@ -83,13 +83,25 @@
         <div v-else>
             <v-row class="mb-2">
                 <v-col cols="12" class="d-flex justify-end">
+                    <v-btn color="info" class="mr-2" @click="reconnectPrinter">Reconectar Impresora</v-btn>
                     <v-btn color="secondary" @click="openPrecloseModal">Pre-cierre</v-btn>
                 </v-col>
             </v-row>
             <v-row>
                 <v-col cols="12" md="4">
                     <v-card>
-                        <v-card-title>Detalle de Venta</v-card-title>
+                        <v-card-title class="d-flex justify-space-between align-center">
+                            <span>Detalle de Venta</span>
+                            <v-tooltip location="top">
+                                <template v-slot:activator="{ props }">
+                                    <v-btn v-bind="props" icon size="small" @click="clearCartWithConfirmation"
+                                        color="warning" :disabled="cart.cartItems.length === 0">
+                                        <v-icon>mdi-delete-sweep-outline</v-icon>
+                                    </v-btn>
+                                </template>
+                                <span>Limpiar Carrito</span>
+                            </v-tooltip>
+                        </v-card-title>
                         <v-list>
                             <v-list-item v-for="item in cart.cartItems" :key="item.product_id">
                                 <v-list-item-title>{{ item.product_name }}</v-list-item-title>
@@ -181,6 +193,20 @@
     </v-card-actions>
   </v-card>
 </v-dialog>
+    <v-dialog v-model="showClearCartDialog" max-width="400" persistent>
+        <v-card>
+            <v-card-title class="text-h5">Confirmar Limpieza</v-card-title>
+            <v-card-text>
+                ¿Está seguro de que desea limpiar el carrito por completo? Esta acción no se puede deshacer.
+            </v-card-text>
+            <v-card-actions>
+                <v-spacer></v-spacer>
+                <v-btn text @click="showClearCartDialog = false">Cancelar</v-btn>
+                <v-btn color="warning" text @click="executeClearCart">Aceptar</v-btn>
+            </v-card-actions>
+        </v-card>
+    </v-dialog>
+
   <TerminalClosingModal
     v-model="showClosingModal"
     :mode="closingModalMode"
@@ -241,9 +267,7 @@ const precloseDetails = computed(() => {
   return Array.isArray(o.details) ? o.details : []
 })
 
-const canReprint = computed(() => {
-  return !!printer && precloseTotals.value.total_transacted > 0
-})
+
 
 // abrir modal preclose (asegura que currentTerminal esté cargada)
 const openPrecloseModal = async () => {
@@ -306,6 +330,11 @@ const onModalDone = async (evt) => {
     // dentro de onModalDone, después de totalsNormalized...
     const details = evt.payload.details ?? [];
 
+    // Guardar detalles en sessionStorage para persistir a través de la recarga de página.
+    if (details.length && currentTerminal.value?.id) {
+      sessionStorage.setItem(`precloseDetails_${currentTerminal.value.id}`, JSON.stringify(details));
+    }
+
     // si tenemos currentTerminal, guarda los totales y detalles ahí para que la card muestre inmediatamente
     if (currentTerminal.value) {
       currentTerminal.value.openings = currentTerminal.value.openings || []
@@ -351,10 +380,11 @@ const onModalDone = async (evt) => {
       showToast('Pre-cierre realizado.', 'success')
     }
 
-    // no necesitamos forzar router.reload() — ya actualizamos el estado localmente
   }
 
-  if (evt.action === 'close' || evt.action === 'open') {
+  if (['preclose', 'close', 'open'].includes(evt.action)) {
+    // Forzamos la recarga para que Inertia actualice la prop `terminal_status`
+    // y se muestre la vista correcta (ej. PRE-CIERRE).
     router.reload()
   }
 }
@@ -426,6 +456,7 @@ let printer = null;
 
 // Modal Pago
 const showPaymentModal = ref(false)
+const showClearCartDialog = ref(false)
 const paymentMethod = ref(null)   // 1=Efectivo, 2=Tarjeta, 3=Chivo
 const efectivoRecibido = ref(null)
 const processing = ref(false)
@@ -446,34 +477,55 @@ const showToast = (message, color = "success") => {
 // reimprimir preclose
 const reprintPreclose = async () => {
   try {
-    // Asegúrate de tener la apertura/resumen
+    // Asegúrate de tener la apertura/resumen.
     if (!currentTerminal.value?.openings?.[0]) {
-      const found = await fetchTerminalForStation()
+      const found = await fetchTerminalForStation();
       if (!found) {
-        showToast('No se encontró la apertura/pre-cierre.', 'error')
-        return
+        showToast('No se encontró la apertura/pre-cierre para esta estación.', 'error');
+        return;
       }
     }
 
-    const totals = precloseTotals.value
-
     if (!printer) {
-      showToast('Impresora no conectada.', 'error')
+      showToast('Impresora no conectada.', 'error');
+      return;
+    }
+
+    // `precloseDetails` computado puede estar vacío si los detalles no vienen del backend.
+    let details = precloseDetails.value;
+
+    // Si está vacío, intenta recuperarlo de sessionStorage como fallback.
+    if ((!details || details.length === 0) && currentTerminal.value?.id) {
+      const storedDetails = sessionStorage.getItem(`precloseDetails_${currentTerminal.value.id}`);
+      if (storedDetails) {
+        try {
+          details = JSON.parse(storedDetails);
+          console.log('Detalles de pre-cierre cargados desde sessionStorage.');
+        } catch (e) {
+          console.error("Error al parsear detalles desde sessionStorage:", e);
+          details = []; // Reset in case of invalid JSON
+        }
+      }
+    }
+
+    const dataToPrint = {
+      ...precloseTotals.value,
+      details: details || [], // Asegura que details sea siempre un array
+    };
+    
+    // Una última comprobación por si no hay ni totales ni detalles
+    if (dataToPrint.total_transacted <= 0 && dataToPrint.details.length === 0) {
+      showToast('No hay nada para imprimir.', 'warning')
       return
     }
 
-    if (totals.total_transacted <= 0) {
-      showToast('No hay transacciones para imprimir.', 'warning')
-      return
-    }
-
-    await printPrecloseReceipt(totals)
-    showToast('Voucher reimpreso correctamente.', 'success')
+    await printPrecloseReceipt(dataToPrint);
+    showToast('Voucher reimpreso correctamente.', 'success');
   } catch (err) {
-    console.error('Error reimprimiendo pre-cierre:', err)
-    showToast('Ocurrió un error al reimprimir.', 'error')
+    console.error('Error reimprimiendo pre-cierre:', err);
+    showToast('Ocurrió un error al reimprimir.', 'error');
   }
-}
+};
 
 // helper: station id (en scope global del componente)
 const getStationId = () => {
@@ -515,6 +567,20 @@ const cancelarPago = () => {
     showPaymentModal.value = false
 }
 
+const clearCartWithConfirmation = () => {
+  if (cart.cartItems.length === 0) {
+    showToast("El carrito ya está vacío.", "info");
+    return;
+  }
+  showClearCartDialog.value = true;
+};
+
+const executeClearCart = () => {
+    cart.clearCart();
+    showToast("Carrito limpiado.", "success");
+    showClearCartDialog.value = false;
+};
+
 // confirmar pago: valida, guarda selección local y llama a printReceipt
 const confirmarPago = async () => {
   if (processing.value) return
@@ -542,6 +608,96 @@ const confirmarPago = async () => {
     processing.value = false
   }
 }
+
+const performFullReconnect = () => {
+    if (!props.printer_ip) {
+        showToast("No hay una impresora activa asignada.", "error");
+        return;
+    }
+    if (epos) {
+        epos.disconnect();
+    }
+    printer = null;
+
+    showToast('Reconectando impresora...', 'info');
+
+    epos = new window.epson.ePOSDevice();
+    epos.connect(props.printer_ip, 8008, (connectResult) => {
+        if (connectResult === 'OK') {
+            epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, createResult) => {
+                if (createResult === 'OK') {
+                    printer = printerDevice;
+                    // On successful reconnect, also print the test voucher
+                    try {
+                        printer.addTextAlign(printer.ALIGN_CENTER);
+                        printer.addTextStyle(false, false, true, printer.COLOR_1);
+                        printer.addText('Impresora Reconectada Exitosamente\n');
+                        printer.addTextStyle(false, false, false, printer.COLOR_1);
+                        printer.addFeedLine(1);
+                        printer.addCut(printer.CUT_FEED);
+                        printer.send();
+                        showToast('Impresora reconectada y voucher de prueba enviado.', 'success');
+                    } catch (e) {
+                        console.error('Error al imprimir voucher de prueba post-reconexión:', e);
+                        showToast('Error al enviar voucher de prueba.', 'error');
+                    }
+                } else {
+                    console.error('Error creating printer device after reconnect:', createResult);
+                    showToast(`Error al crear dispositivo: ${createResult}`, 'error');
+                }
+            });
+        } else {
+            console.error('Error reconnecting to printer:', connectResult);
+            showToast('Impresora Hibernando', 'warning');
+        }
+    });
+};
+
+const reconnectPrinter = () => {
+    if (!printer || !epos) {
+        performFullReconnect();
+        return;
+    }
+
+    showToast('Verificando conexión de impresora...', 'info');
+
+    let printFailed = false;
+    const originalOnError = epos.onerror;
+
+    epos.onerror = (err) => {
+        if (!printFailed) { // Prevent multiple calls
+            printFailed = true;
+            console.error('Fallo de impresión detectado, iniciando reconexión completa.', err);
+            epos.onerror = originalOnError;
+            performFullReconnect();
+        }
+    };
+
+    try {
+        printer.addTextAlign(printer.ALIGN_CENTER);
+        printer.addText('-----------------------------\n');
+        printer.addText('Actualmente Conectada\n');
+        printer.addText('-----------------------------\n');
+        printer.addFeedLine(1);
+        printer.addCut(printer.CUT_FEED);
+        printer.send();
+    } catch (e) {
+        if (!printFailed) {
+            printFailed = true;
+            console.error('Fallo de impresión (síncrono), iniciando reconexión completa.', e);
+            epos.onerror = originalOnError;
+            performFullReconnect();
+        }
+        return;
+    }
+
+    setTimeout(() => {
+        epos.onerror = originalOnError;
+        if (!printFailed) {
+            showToast('La impresora ya está conectada.', 'success');
+        }
+    }, 2000); // 2 seconds should be enough to catch a connection error
+};
 
 // Cargar productos + conectar impresora
 onMounted(async () => {
@@ -638,7 +794,8 @@ const printReceipt = async (paymentMethodValue, efectivoValue) => {
             total: cart.cartTotal,
             station_id: stationId,
             employee_id: 103,
-            payment_method: Number(paymentMethodValue)
+            payment_method: Number(paymentMethodValue),
+            transaction_type_id: 1, // 1 = Venta normal
         });
 
         if (!response.data.success) {

@@ -9,8 +9,9 @@
 
       <v-card-text class="text-body-2">
         <div class="mb-3">
-            <p class="mb-1"><strong>Terminal:</strong> {{ terminal?.terminal_name || 'N/A' }}</p>
-            <p class="mb-1"><strong>Cajero:</strong> {{ terminal?.user?.name || 'Sin asignar' }}</p>
+          <p class="mb-1"><strong>Terminal:</strong> {{ terminal?.terminal_name || 'N/A' }}</p>
+          <p class="mb-1"><strong>Cajero:</strong> {{ terminal?.user?.name || 'Sin asignar' }}</p>
+          <p v-if="opening" class="mb-1"><strong>Fondo de cambio:</strong> ${{ Number(opening?.change_fund ?? opening?.opening_amount ?? 0).toFixed(2) }}</p>
         </div>
 
         <div v-if="showTotals">

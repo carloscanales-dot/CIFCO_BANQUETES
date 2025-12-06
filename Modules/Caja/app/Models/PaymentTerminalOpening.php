@@ -84,10 +84,14 @@ class PaymentTerminalOpening extends Model
     public function getTotalTransactedAttribute()
     {
         if ($this->relationLoaded('transactions')) {
-            return (float) $this->transactions->sum('amount');
+            return (float) $this->transactions
+                ->where('transaction_type_id', 1)
+                ->sum('amount');
         }
 
-        return (float) $this->transactions()->sum('amount');
+        return (float) $this->transactions()
+            ->where('transaction_type_id', 1)
+            ->sum('amount');
     }
 
     /** Total por método de pago */
@@ -95,6 +99,7 @@ class PaymentTerminalOpening extends Model
     {
         return $this->transactions()
             ->where('payment_method_id', 1)
+            ->where('transaction_type_id', 1)
             ->sum('amount');
     }
 
@@ -102,6 +107,7 @@ class PaymentTerminalOpening extends Model
     {
         return $this->transactions()
             ->where('payment_method_id', 2)
+            ->where('transaction_type_id', 1)
             ->sum('amount');
     }
 
@@ -109,6 +115,7 @@ class PaymentTerminalOpening extends Model
     {
         return $this->transactions()
             ->where('payment_method_id', 3)
+            ->where('transaction_type_id', 1)
             ->sum('amount');
     }
 }

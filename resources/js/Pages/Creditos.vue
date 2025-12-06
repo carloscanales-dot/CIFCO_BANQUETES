@@ -35,6 +35,11 @@
         </div>
 
         <div v-else>
+            <v-row class="mb-2">
+                <v-col cols="12" class="d-flex justify-end">
+                    <v-btn color="info" class="mr-2" @click="reconnectPrinter">Reconectar Impresora</v-btn>
+                </v-col>
+            </v-row>
             <v-row>
                 <!-- Panel lateral: detalle del crédito -->
                 <v-col cols="12" md="4">
@@ -145,6 +150,95 @@ const props = defineProps({
 
 let epos = null
 let printer = null
+
+const performFullReconnect = () => {
+    if (!props.printer_ip) {
+        showToast("No hay una impresora activa asignada a esta estación.", "error");
+        return;
+    }
+    if (epos) {
+        epos.disconnect();
+    }
+    printer = null;
+
+    showToast('Reconectando impresora...', 'info');
+
+    epos = new window.epson.ePOSDevice();
+    epos.connect(props.printer_ip, 8008, (connectResult) => {
+        if (connectResult === 'OK') {
+            epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, createResult) => {
+                if (createResult === 'OK') {
+                    printer = printerDevice;
+                    try {
+                        printer.addTextAlign(printer.ALIGN_CENTER);
+                        printer.addTextStyle(false, false, true, printer.COLOR_1);
+                        printer.addText('Impresora Reconectada Exitosamente\n');
+                        printer.addTextStyle(false, false, false, printer.COLOR_1);
+                        printer.addFeedLine(1);
+                        printer.addCut(printer.CUT_FEED);
+                        printer.send();
+                        showToast('Impresora reconectada y voucher de prueba enviado.', 'success');
+                    } catch (e) {
+                        console.error('Error al imprimir voucher de prueba post-reconexión:', e);
+                        showToast('Error al enviar voucher de prueba.', 'error');
+                    }
+                } else {
+                    console.error('Error creating printer device after reconnect:', createResult);
+                    showToast(`Error al crear dispositivo: ${createResult}`, 'error');
+                }
+            });
+        } else {
+            console.error('Error reconnecting to printer:', connectResult);
+            showToast('Impresora Hibernando', 'warning');
+        }
+    });
+}
+
+const reconnectPrinter = () => {
+    if (!printer || !epos) {
+        performFullReconnect();
+        return;
+    }
+
+    showToast('Verificando conexión de impresora...', 'info');
+
+    let printFailed = false;
+    const originalOnError = epos.onerror;
+
+    epos.onerror = (err) => {
+        if (!printFailed) {
+            printFailed = true;
+            console.error('Fallo de impresión detectado, iniciando reconexión completa.', err);
+            epos.onerror = originalOnError;
+            performFullReconnect();
+        }
+    };
+
+    try {
+        printer.addTextAlign(printer.ALIGN_CENTER);
+        printer.addText('-----------------------------\n');
+        printer.addText('Actualmente Conectada\n');
+        printer.addText('-----------------------------\n');
+        printer.addFeedLine(1);
+        printer.addCut(printer.CUT_FEED);
+        printer.send();
+    } catch (e) {
+        if (!printFailed) {
+            printFailed = true;
+            console.error('Fallo de impresión (síncrono), iniciando reconexión completa.', e);
+            epos.onerror = originalOnError;
+            performFullReconnect();
+        }
+        return;
+    }
+
+    setTimeout(() => {
+        epos.onerror = originalOnError;
+        if (!printFailed) {
+            showToast('La impresora ya está conectada.', 'success');
+        }
+    }, 2000);
+}
 
 // -- PRE-CIERRE COMPUTED --
 const precloseOpening = computed(() => {
@@ -281,7 +375,8 @@ const printCreditReceipt = async () => {
             employee_id: selectedEmployee.value.id,
             cartItems: cart.cartItems,
             total: cart.cartTotal,
-            station_id: getStationId()
+            station_id: getStationId(),
+            transaction_type_id: 2, // 2 = Venta a empleado
         })
 
         if (!response.data.success) {
@@ -364,7 +459,7 @@ const printCreditReceipt = async () => {
             printer.addText(`TOTAL: $${cart.cartTotal.toFixed(2)}\n`);
             printer.addTextStyle(false, false, false, printer.COLOR_1);
             printer.addText("-----------------------------\n");
-            printer.addText("¡GRACias POR SU PREFERENCIA!\n");
+            printer.addText("¡GRACIAS POR SU PREFERENCIA!\n");
             printer.addFeedLine(1);
             printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
             printer.addFeedLine(3);
