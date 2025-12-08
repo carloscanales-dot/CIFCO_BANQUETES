@@ -5,6 +5,7 @@ namespace Modules\Ticket\Http\Controllers;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Maatwebsite\Excel\Facades\Excel;
@@ -20,22 +21,46 @@ class StationTicketController extends Controller
      */
     public function index(Request $request)
     {
-        $query = DB::table('v_station_tickets')->when($request->get('search'), function ($query, $search) {
-            return $query->where(function ($query) use ($search) {
-                foreach ($search as $field => $value) {
-                    $filter = $this->setField($field);
+        // Obtener la estación del usuario autenticado
+        $userStation = DB::table('station_users')
+            ->where('user_id', Auth::id())
+            ->first();
 
-                    if (!is_null($filter) && !is_null($value)) {
-                        $this->setFilter($query, $filter['operator'], $filter['field'], $value);
+        if (!$userStation) {
+            return Inertia::render('Ticket/StationTicket/Index', [
+                'result' => collect([]),
+            ]);
+        }
+
+        // JOIN: tickets → station_tickets
+        // Mostrar solo tickets canjeados (status = 0) en la estación del usuario
+        $query = DB::table('station_tickets')
+            ->join('tickets', 'station_tickets.ticket_id', '=', 'tickets.id')
+            ->join('products', 'tickets.product_id', '=', 'products.id')
+            ->join('stations', 'station_tickets.station_id', '=', 'stations.id')
+            ->where('station_tickets.station_id', $userStation->station_id)
+            ->where('tickets.status', 0)  // Solo tickets canjeados (status 0)
+            ->when($request->get('search'), function ($query, $search) {
+                return $query->where(function ($query) use ($search) {
+                    foreach ($search as $field => $value) {
+                        $filter = $this->setField($field);
+
+                        if (!is_null($filter) && !is_null($value)) {
+                            $this->setFilter($query, $filter['operator'], $filter['field'], $value);
+                        }
                     }
-                }
+                });
+            })->when($request->get('sort'), function ($query, $sortBy) {
+                return $query->orderBy($sortBy['key'], $sortBy['order']);
             });
-        })->when($request->get('sort'), function ($query, $sortBy) {
-            return $query->orderBy($sortBy['key'], $sortBy['order']);
-        });
 
         $result = $query
-            ->select('product_name', 'uuid', 'station_name', 'created_at')
+            ->select(
+                'products.product_name',
+                'tickets.uuid',
+                'stations.station_name',
+                'station_tickets.created_at'
+            )
             ->paginate($request->get('limit', 10));
 
         if ($request->expectsJson()) {

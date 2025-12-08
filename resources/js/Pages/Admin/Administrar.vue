@@ -33,7 +33,6 @@ const rules = {
 // Acción Guardar
 const guardarCredito = () => {
     if (form.value.validate()) {
-        console.log('Datos guardados:', { ...formData })
         // Aquí puedes hacer tu llamada a la API con Inertia.post(...)
         limpiarCampos()
     }

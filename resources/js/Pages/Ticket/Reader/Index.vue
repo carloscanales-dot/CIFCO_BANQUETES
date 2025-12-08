@@ -41,6 +41,14 @@ const modalExito = computed({
     if (!val) qrStore.reset()
   }
 })
+
+// Modal para producto no asignado a la estación
+const modalNoAsignado = computed({
+  get: () => form.value.status === 3,
+  set: (val) => {
+    if (!val) qrStore.reset()
+  }
+})
 </script>
 
 <template>
@@ -140,6 +148,28 @@ const modalExito = computed({
             @click="modalExito = false"
           >
             Aceptar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- ==========================
+         MODAL — PRODUCTO NO ASIGNADO A ESTA ESTACIÓN
+    ============================ -->
+    <VDialog v-model="modalNoAsignado" persistent max-width="520">
+      <VCard>
+        <VCardTitle class="text-error text-h6">
+          Producto no asignado
+        </VCardTitle>
+
+        <VCardText>
+          {{ alert }}
+        </VCardText>
+
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="secondary" variant="tonal" @click="modalNoAsignado = false">
+            Cerrar
           </VBtn>
         </VCardActions>
       </VCard>

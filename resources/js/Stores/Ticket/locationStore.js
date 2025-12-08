@@ -23,7 +23,6 @@ export const useLocationStore = defineStore('locationStore', () => {
     try {
       const { data } = await axios.get('/ticket/location/all')
       locations.value = Array.isArray(data) ? data : []
-      console.log('Locaciones cargadas:', locations.value)
     } catch (error) {
       console.error('Error cargando locaciones:', error)
       locations.value = []

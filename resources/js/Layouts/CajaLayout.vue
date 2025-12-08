@@ -33,11 +33,11 @@ watch(
                   null
 
     switch (flashObj.type) {
-      case 'success': toast?.success?.(flashObj.message) ?? console.log('SUCCESS:', flashObj.message); break
-      case 'error':   toast?.error?.(flashObj.message) ?? console.error('ERROR:', flashObj.message); break
-      case 'info':    toast?.info?.(flashObj.message) ?? console.info('INFO:', flashObj.message); break
-      case 'warning': toast?.warning?.(flashObj.message) ?? console.warn('WARNING:', flashObj.message); break
-      default: console.log('FLASH (unknown):', flashObj)
+      case 'success': toast?.success?.(flashObj.message); break
+      case 'error':   toast?.error?.(flashObj.message); break
+      case 'info':    toast?.info?.(flashObj.message); break
+      case 'warning': toast?.warning?.(flashObj.message); break
+      default: break
     }
   },
   { immediate: true }

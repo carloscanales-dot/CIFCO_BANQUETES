@@ -35,6 +35,25 @@ class ReaderController extends Controller
 
         $ticket = $this->getTicket($uuid);
         $product_name = Str::upper($ticket->product_name);
+        // Determinar si el usuario está asociado a una estación y si el producto
+        // está asignado a esa estación.
+        $station = $this->getStation();
+        $assigned = true;
+
+        if ($station) {
+            $productId = DB::table('v_tickets')->where('uuid', 'like', '%' . $uuid . '%')->value('product_id');
+            $stationId = $station->station_id;
+
+            $hasProduct = DB::table('station_products')
+                ->where('station_id', $stationId)
+                ->where('product_id', $productId)
+                ->exists();
+
+            $assigned = $hasProduct;
+        } else {
+            // Si el usuario no está asociado a una estación, marcamos assigned = false.
+            $assigned = false;
+        }
 
         switch ($ticket->status) {
             case 0:
@@ -43,8 +62,17 @@ class ReaderController extends Controller
                 break;
             case 1:
             default:
-                $message = "El producto $product_name, esta disponible, desea CANJEARLO?.";
+                if (! $assigned) {
+                    $success = false;
+                    $message = 'Este producto NO está asignado a la estación donde estás trabajando.';
+                } else {
+                    $message = "El producto $product_name, esta disponible, desea CANJEARLO?.";
+                }
         }
+
+        // Añadimos la propiedad 'assigned' al ticket para que el frontend pueda
+        // manejar el modal específico de producto no asignado.
+        $ticket = (object) array_merge((array) $ticket, ['assigned' => $assigned]);
 
         return response()->json([
             'success' => $success,

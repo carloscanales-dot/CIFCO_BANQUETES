@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Modules\Caja\Models\Transaction;
+use Modules\Caja\App\Models\PaymentTerminal;
+use Modules\Caja\App\Models\PaymentTerminalOpening;
 use Modules\Ticket\Models\Station; // <-- importar Station
 
 class TransactionController extends Controller
@@ -56,16 +58,7 @@ class TransactionController extends Controller
         $transaction_type_id = (int) $request->input('transaction_type_id', 1); // 1 = Venta, 2 = Venta Empleado
 
 
-        // Opcional: loguear payload para depuración (quítalo en prod)
-        Log::debug('Transactions.store payload', [
-            'user_id' => Auth::id(),
-            'station_id' => $station_id,
-            'payment_method' => $payment_method,
-            'employee_id' => $employee_id,
-            'transaction_type_id' => $transaction_type_id,
-            'total' => $total,
-            'items_count' => count($cartItems),
-        ]);
+        // Nota: removido logging de depuración en producción para evitar ruido en logs.
 
         // Validaciones básicas
         if (!$station_id) {
@@ -83,9 +76,21 @@ class TransactionController extends Controller
         }
 
         // Buscar la última apertura de terminal del usuario autenticado
-        $terminalOpening = DB::table('payment_terminal_opening')
+        // Ahora determinamos la(s) terminal(es) asociadas a la estación solicitada
+        $terminalIds = PaymentTerminal::where('station_id', $station_id)->pluck('id');
+
+        // Si no hay terminal asociada a la estación, fallamos
+        if ($terminalIds->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se encontró ninguna terminal asociada a la estación.'
+            ], 422);
+        }
+
+        // Buscar la última apertura (no cerrada) para la(s) terminal(es) y el usuario autenticado
+        $terminalOpening = PaymentTerminalOpening::whereIn('payment_terminal_id', $terminalIds)
             ->where('user_id', Auth::id())
-            ->where('payment_terminal_id', 1) // si esto debe ser dinámico, reemplazar
+            ->whereDoesntHave('closing')
             ->orderByDesc('opening_date')
             ->first();
 

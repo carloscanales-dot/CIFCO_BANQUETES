@@ -500,7 +500,6 @@ const reprintPreclose = async () => {
       if (storedDetails) {
         try {
           details = JSON.parse(storedDetails);
-          console.log('Detalles de pre-cierre cargados desde sessionStorage.');
         } catch (e) {
           console.error("Error al parsear detalles desde sessionStorage:", e);
           details = []; // Reset in case of invalid JSON
@@ -512,7 +511,7 @@ const reprintPreclose = async () => {
       ...precloseTotals.value,
       details: details || [], // Asegura que details sea siempre un array
     };
-    
+
     // Una última comprobación por si no hay ni totales ni detalles
     if (dataToPrint.total_transacted <= 0 && dataToPrint.details.length === 0) {
       showToast('No hay nada para imprimir.', 'warning')
@@ -601,8 +600,7 @@ const confirmarPago = async () => {
   showPaymentModal.value = false
   processing.value = true
 
-  try {
-    console.log('confirmarPago -> payment:', selectedPaymentMethod, 'efectivo:', selectedEfectivo, 'station_id:', getStationId())
+    try {
     await printReceipt(selectedPaymentMethod, selectedEfectivo)
   } finally {
     processing.value = false
@@ -780,22 +778,18 @@ const printReceipt = async (paymentMethodValue, efectivoValue) => {
     }
 
     try {
-        // debug: mostrar payload en consola
-        console.log('POST /ticket/cajas/transactions/store', {
+        // payload para la creación de la transacción (sin logs en producción)
+        const payload = {
           cartItems: cart.cartItems,
           total: cart.cartTotal,
           station_id: stationId,
           employee_id: 103,
           payment_method: Number(paymentMethodValue)
-        })
+        }
 
         const response = await axios.post('/ticket/cajas/transactions/store', {
-            cartItems: cart.cartItems,
-            total: cart.cartTotal,
-            station_id: stationId,
-            employee_id: 103,
-            payment_method: Number(paymentMethodValue),
-            transaction_type_id: 1, // 1 = Venta normal
+          ...payload,
+          transaction_type_id: 1, // 1 = Venta normal
         });
 
         if (!response.data.success) {

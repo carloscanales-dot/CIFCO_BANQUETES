@@ -7,8 +7,8 @@ const props = defineProps({
     default: () => ({
       byProduct: [],
       byDate: [],
-      byStation: [],
-      total: 0
+      total: 0,
+      transactionCount: 0
     })
   }
 })
@@ -29,7 +29,7 @@ const lineAxis = {
 <template>
   <v-container fluid>
     <div class="text-h6 text-medium-emphasis mb-4">
-      Tickets QR - Lectura y Canje de Cortesía
+      Ventas a Empleado - Créditos Registrados
     </div>
 
     <!-- Resumen de Total -->
@@ -38,19 +38,39 @@ const lineAxis = {
         <v-card color="#388e3c">
           <v-card-text>
             <div class="text-white text-h5 font-weight-bold">
-              {{ data.total ?? 0 }}
+              ${{ data.total ?? 0 }}
             </div>
-            <div class="text-white text-caption">Total de Tickets Canjeados</div>
+            <div class="text-white text-caption">Total de Créditos</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-card color="#2e7d32">
+          <v-card-text>
+            <div class="text-white text-h5 font-weight-bold">
+              {{ data.transactionCount ?? 0 }}
+            </div>
+            <div class="text-white text-caption">Transacciones</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-card color="#1b5e20">
+          <v-card-text>
+            <div class="text-white text-h5 font-weight-bold">
+              ${{ data.transactionCount > 0 ? (data.total / data.transactionCount).toFixed(2) : 0 }}
+            </div>
+            <div class="text-white text-caption">Promedio por Transacción</div>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
     <v-row dense>
-      <!-- Tickets por Producto (Bar Horizontal) -->
+      <!-- Top Productos en Crédito (Bar Horizontal) -->
       <v-col cols="12" md="6" lg="6">
         <v-card>
-          <v-card-title class="text-h6">Tickets Canjeados por Producto</v-card-title>
+          <v-card-title class="text-h6">Top Productos en Crédito</v-card-title>
           <v-card-text>
             <v-responsive aspect-ratio="2">
               <Chart
@@ -63,7 +83,7 @@ const lineAxis = {
               >
                 <template #layers>
                   <Grid strokeDasharray="2,2" />
-                  <Bar :dataKeys="['label', 'value']" :barStyle="{ fill: '#66bb6a' }" />
+                  <Bar :dataKeys="['label', 'value']" :barStyle="{ fill: '#f57c00' }" />
                 </template>
                 <template #widgets>
                   <Tooltip />
@@ -74,16 +94,16 @@ const lineAxis = {
               </div>
             </v-responsive>
             <div class="mt-2">
-              <v-chip color="#66bb6a" small>Por Producto</v-chip>
+              <v-chip color="#f57c00" small>Productos</v-chip>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <!-- Tendencia de Canjes (Line) -->
+      <!-- Tendencia de Créditos (Line) -->
       <v-col cols="12" md="6" lg="6">
         <v-card>
-          <v-card-title class="text-h6">Tendencia de Canjes por Día</v-card-title>
+          <v-card-title class="text-h6">Tendencia de Créditos por Día</v-card-title>
           <v-card-text>
             <v-responsive aspect-ratio="2">
               <Chart
@@ -96,7 +116,7 @@ const lineAxis = {
               >
                 <template #layers>
                   <Grid strokeDasharray="2,2" />
-                  <Line :dataKeys="['label', 'value']" :lineStyle="{ stroke: '#66bb6a', strokeWidth: 2 }" />
+                  <Line :dataKeys="['label', 'value']" :lineStyle="{ stroke: '#f57c00', strokeWidth: 2 }" />
                 </template>
                 <template #widgets>
                   <Tooltip />
@@ -107,56 +127,23 @@ const lineAxis = {
               </div>
             </v-responsive>
             <div class="mt-2">
-              <v-chip color="#66bb6a" small>Canjes Diarios</v-chip>
-            </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <!-- Canjes por Estación (Bar) -->
-      <v-col cols="12" md="6" lg="6">
-        <v-card>
-          <v-card-title class="text-h6">Canjes por Estación</v-card-title>
-          <v-card-text>
-            <v-responsive aspect-ratio="2">
-              <Chart
-                v-if="data.byStation.length"
-                :size="{ width: 500, height: 250 }"
-                :data="data.byStation"
-                :margin="margin"
-                direction="horizontal"
-                :axis="axis"
-              >
-                <template #layers>
-                  <Grid strokeDasharray="3,3" />
-                  <Bar :dataKeys="['label', 'value']" :barStyle="{ fill: '#43a047' }" />
-                </template>
-                <template #widgets>
-                  <Tooltip />
-                </template>
-              </Chart>
-              <div v-else class="text-center text-medium-emphasis py-8">
-                Sin datos disponibles
-              </div>
-            </v-responsive>
-            <div class="mt-2">
-              <v-chip color="#43a047" small>Por Estación</v-chip>
+              <v-chip color="#f57c00" small>Créditos Diarios</v-chip>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
 
       <!-- Información Adicional -->
-      <v-col cols="12" md="6" lg="6">
+      <v-col cols="12">
         <v-card>
-          <v-card-title class="text-h6">Información de Tickets</v-card-title>
+          <v-card-title class="text-h6">Información de Créditos</v-card-title>
           <v-card-text>
-            <v-alert color="info" variant="tonal" class="mb-0">
-              <div class="text-subtitle-2 font-weight-bold mb-2">Detalles:</div>
+            <v-alert color="warning" variant="tonal" class="mb-0">
+              <div class="text-subtitle-2 font-weight-bold mb-2">Notas:</div>
               <ul class="text-caption mb-0">
-                <li>Tickets de cortesía/promoción canjeados vía QR</li>
-                <li>Se registra por estación y producto</li>
-                <li>Útil para trackear actividad de promociones</li>
+                <li>Los créditos son productos vendidos a empleados</li>
+                <li>Estos montos son adicionales a las ventas regulares</li>
+                <li>Verificar que los créditos sean posteriormente cobrados</li>
               </ul>
             </v-alert>
           </v-card-text>

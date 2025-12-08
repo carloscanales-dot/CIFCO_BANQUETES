@@ -62,7 +62,6 @@ watch(localDialog, async (isOpen) => {
   emit('update:modelValue', isOpen)
 
   if (isOpen && stationId.value) {
-    console.log("🔄 Cargando productos ya asignados")
     const res = await axios.get(`/ticket/station/${stationId.value}/products`)
     selectedProducts.value = res.data.map(p => p.id)
   }
@@ -74,7 +73,6 @@ watch(localDialog, async (isOpen) => {
 
 // ✅ Cargar y normalizar productos disponibles
 onMounted(async () => {
-  console.log("📦 Cargando lista total de productos")
   const res = await axios.get('/ticket/product/all')
   productOptions.value = res.data.map(p => ({
     id: p.id ?? p.product_id,        // ✅ Normalización segura

@@ -1,20 +1,23 @@
 <script setup>
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
-import DashboardCharts from '@/Components/DashboardCharts.vue'
+import SalesTab from '@/Pages/Analytics/Tabs/SalesTab.vue'
+import EmployeeSalesTab from '@/Pages/Analytics/Tabs/EmployeeSalesTab.vue'
 import TicketsTab from '@/Pages/Analytics/Tabs/TicketsTab.vue'
 
 import { Head } from '@inertiajs/vue3'
 import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
-const barData = ref([])
-const pieData = ref([])
-const gainsByStation = ref([])
-const gainsByDate = ref([])
+const chartData = ref({
+  sales: { byPaymentMethod: [], byProduct: [], byDate: [], byStation: [] },
+  employeeSales: { byProduct: [], byDate: [], total: 0 },
+  tickets: { byProduct: [], byDate: [], byStation: [], total: 0 }
+})
+const isLoading = ref(false)
 
 // Tab activo
-const tab = ref('panel')
+const tab = ref('sales')
 
 const breadcrumbs = ref([
   {
@@ -24,14 +27,14 @@ const breadcrumbs = ref([
 ])
 
 onMounted(async () => {
+  isLoading.value = true
   try {
     const { data } = await axios.get('/dashboard/charts')
-    barData.value = data.bar
-    pieData.value = data.pie
-    gainsByStation.value = data.gains_by_station
-    gainsByDate.value = data.gains_by_date
+    chartData.value = data
   } catch (error) {
     console.error('Error al obtener datos del dashboard:', error)
+  } finally {
+    isLoading.value = false
   }
 })
 </script>
@@ -50,9 +53,9 @@ onMounted(async () => {
 
       <!-- 🔥 Tabs correctas (sin v-card-title) -->
       <v-tabs v-model="tab" background-color="transparent" class="px-4 pt-2">
-        <v-tab value="panel">Panel General</v-tab>
-        <v-tab value="tickets">Tickets</v-tab>
-        <v-tab value="ventas">Ventas</v-tab>
+        <v-tab value="sales">Ventas a Clientes</v-tab>
+        <v-tab value="employee">Ventas a Empleado</v-tab>
+        <v-tab value="tickets">Tickets (QR)</v-tab>
       </v-tabs>
 
       <v-divider />
@@ -60,32 +63,27 @@ onMounted(async () => {
       <!-- Contenido de Tabs -->
       <v-window v-model="tab">
 
-        <!-- TAB 1 — PANEL GENERAL -->
-        <v-window-item value="panel">
+        <!-- TAB 1 — VENTAS A CLIENTES -->
+        <v-window-item value="sales">
           <v-card-text>
-
-            <div class="text-h6 text-medium-emphasis mb-4">
-              Bienvenido/a de nuevo, {{ $page.props.auth.user.name }}!
-            </div>
-
-            <DashboardCharts v-if="barData.length && pieData.length" :barData="barData" :pieData="pieData"
-              :gainsByStation="gainsByStation" :gainsByDate="gainsByDate" />
-
+            <v-progress-linear v-if="isLoading" indeterminate></v-progress-linear>
+            <SalesTab v-else :data="chartData.sales" />
           </v-card-text>
         </v-window-item>
 
-        <!-- TAB 2 — TICKETS -->
+        <!-- TAB 2 — VENTAS A EMPLEADO -->
+        <v-window-item value="employee">
+          <v-card-text>
+            <v-progress-linear v-if="isLoading" indeterminate></v-progress-linear>
+            <EmployeeSalesTab v-else :data="chartData.employeeSales" />
+          </v-card-text>
+        </v-window-item>
+
+        <!-- TAB 3 — TICKETS (QR) -->
         <v-window-item value="tickets">
           <v-card-text>
-            <TicketsTab />
-          </v-card-text>
-        </v-window-item>
-
-        <!-- TAB 3 — VENTAS -->
-        <v-window-item value="ventas">
-          <v-card-text>
-            <h3 class="text-h6 font-weight-bold">Módulo de ventas</h3>
-            <p class="text-medium-emphasis">Próximamente…</p>
+            <v-progress-linear v-if="isLoading" indeterminate></v-progress-linear>
+            <TicketsTab v-else :data="chartData.tickets" />
           </v-card-text>
         </v-window-item>
 

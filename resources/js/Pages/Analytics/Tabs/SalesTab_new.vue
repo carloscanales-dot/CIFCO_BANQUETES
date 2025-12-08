@@ -1,14 +1,16 @@
 <script setup>
-import { Chart, Bar, Line, Tooltip, Grid } from 'vue3-charts'
+import { Chart, Bar, Line, Pie, Tooltip, Grid } from 'vue3-charts'
 
 const props = defineProps({
   data: {
     type: Object,
     default: () => ({
+      byPaymentMethod: [],
       byProduct: [],
       byDate: [],
       byStation: [],
-      total: 0
+      total: 0,
+      transactionCount: 0
     })
   }
 })
@@ -29,28 +31,81 @@ const lineAxis = {
 <template>
   <v-container fluid>
     <div class="text-h6 text-medium-emphasis mb-4">
-      Tickets QR - Lectura y Canje de Cortesía
+      Ventas a Clientes - Análisis de Ingresos
     </div>
 
-    <!-- Resumen de Total -->
+    <!-- Resumen de Ventas -->
     <v-row dense class="mb-4">
       <v-col cols="12" md="3">
-        <v-card color="#388e3c">
+        <v-card color="#1976d2">
           <v-card-text>
             <div class="text-white text-h5 font-weight-bold">
-              {{ data.total ?? 0 }}
+              ${{ data.total ?? 0 }}
             </div>
-            <div class="text-white text-caption">Total de Tickets Canjeados</div>
+            <div class="text-white text-caption">Total Ingresos</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-card color="#0d47a1">
+          <v-card-text>
+            <div class="text-white text-h5 font-weight-bold">
+              {{ data.transactionCount ?? 0 }}
+            </div>
+            <div class="text-white text-caption">Transacciones</div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+      <v-col cols="12" md="3">
+        <v-card color="#1565c0">
+          <v-card-text>
+            <div class="text-white text-h5 font-weight-bold">
+              ${{ data.transactionCount > 0 ? (data.total / data.transactionCount).toFixed(2) : 0 }}
+            </div>
+            <div class="text-white text-caption">Promedio por Transacción</div>
           </v-card-text>
         </v-card>
       </v-col>
     </v-row>
 
     <v-row dense>
-      <!-- Tickets por Producto (Bar Horizontal) -->
+      <!-- Ingresos por Método de Pago (Bar) -->
       <v-col cols="12" md="6" lg="6">
         <v-card>
-          <v-card-title class="text-h6">Tickets Canjeados por Producto</v-card-title>
+          <v-card-title class="text-h6">Ingresos por Método de Pago</v-card-title>
+          <v-card-text>
+            <v-responsive aspect-ratio="2">
+              <Chart
+                v-if="data.byPaymentMethod.length"
+                :size="{ width: 500, height: 250 }"
+                :data="data.byPaymentMethod"
+                :margin="margin"
+                direction="vertical"
+                :axis="axis"
+              >
+                <template #layers>
+                  <Grid strokeDasharray="2,2" />
+                  <Bar :dataKeys="['label', 'value']" :barStyle="{ fill: '#1976d2' }" />
+                </template>
+                <template #widgets>
+                  <Tooltip />
+                </template>
+              </Chart>
+              <div v-else class="text-center text-medium-emphasis py-8">
+                Sin datos disponibles
+              </div>
+            </v-responsive>
+            <div class="mt-2">
+              <v-chip color="#1976d2" small>Por Método</v-chip>
+            </div>
+          </v-card-text>
+        </v-card>
+      </v-col>
+
+      <!-- Top Productos (Bar Horizontal) -->
+      <v-col cols="12" md="6" lg="6">
+        <v-card>
+          <v-card-title class="text-h6">Top 8 Productos por Ingresos</v-card-title>
           <v-card-text>
             <v-responsive aspect-ratio="2">
               <Chart
@@ -63,7 +118,7 @@ const lineAxis = {
               >
                 <template #layers>
                   <Grid strokeDasharray="2,2" />
-                  <Bar :dataKeys="['label', 'value']" :barStyle="{ fill: '#66bb6a' }" />
+                  <Bar :dataKeys="['label', 'value']" :barStyle="{ fill: '#0d47a1' }" />
                 </template>
                 <template #widgets>
                   <Tooltip />
@@ -74,16 +129,16 @@ const lineAxis = {
               </div>
             </v-responsive>
             <div class="mt-2">
-              <v-chip color="#66bb6a" small>Por Producto</v-chip>
+              <v-chip color="#0d47a1" small>Productos</v-chip>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <!-- Tendencia de Canjes (Line) -->
+      <!-- Tendencia Diaria (Line) -->
       <v-col cols="12" md="6" lg="6">
         <v-card>
-          <v-card-title class="text-h6">Tendencia de Canjes por Día</v-card-title>
+          <v-card-title class="text-h6">Tendencia de Ingresos (Últimos 30 días)</v-card-title>
           <v-card-text>
             <v-responsive aspect-ratio="2">
               <Chart
@@ -96,7 +151,7 @@ const lineAxis = {
               >
                 <template #layers>
                   <Grid strokeDasharray="2,2" />
-                  <Line :dataKeys="['label', 'value']" :lineStyle="{ stroke: '#66bb6a', strokeWidth: 2 }" />
+                  <Line :dataKeys="['label', 'value']" :lineStyle="{ stroke: '#1976d2', strokeWidth: 2 }" />
                 </template>
                 <template #widgets>
                   <Tooltip />
@@ -107,16 +162,16 @@ const lineAxis = {
               </div>
             </v-responsive>
             <div class="mt-2">
-              <v-chip color="#66bb6a" small>Canjes Diarios</v-chip>
+              <v-chip color="#1976d2" small>Tendencia Diaria</v-chip>
             </div>
           </v-card-text>
         </v-card>
       </v-col>
 
-      <!-- Canjes por Estación (Bar) -->
+      <!-- Ganancias por Estación (Bar) -->
       <v-col cols="12" md="6" lg="6">
         <v-card>
-          <v-card-title class="text-h6">Canjes por Estación</v-card-title>
+          <v-card-title class="text-h6">Ingresos por Estación</v-card-title>
           <v-card-text>
             <v-responsive aspect-ratio="2">
               <Chart
@@ -129,7 +184,7 @@ const lineAxis = {
               >
                 <template #layers>
                   <Grid strokeDasharray="3,3" />
-                  <Bar :dataKeys="['label', 'value']" :barStyle="{ fill: '#43a047' }" />
+                  <Bar :dataKeys="['label', 'value']" :barStyle="{ fill: '#1565c0' }" />
                 </template>
                 <template #widgets>
                   <Tooltip />
@@ -140,25 +195,8 @@ const lineAxis = {
               </div>
             </v-responsive>
             <div class="mt-2">
-              <v-chip color="#43a047" small>Por Estación</v-chip>
+              <v-chip color="#1565c0" small>Por Estación</v-chip>
             </div>
-          </v-card-text>
-        </v-card>
-      </v-col>
-
-      <!-- Información Adicional -->
-      <v-col cols="12" md="6" lg="6">
-        <v-card>
-          <v-card-title class="text-h6">Información de Tickets</v-card-title>
-          <v-card-text>
-            <v-alert color="info" variant="tonal" class="mb-0">
-              <div class="text-subtitle-2 font-weight-bold mb-2">Detalles:</div>
-              <ul class="text-caption mb-0">
-                <li>Tickets de cortesía/promoción canjeados vía QR</li>
-                <li>Se registra por estación y producto</li>
-                <li>Útil para trackear actividad de promociones</li>
-              </ul>
-            </v-alert>
           </v-card-text>
         </v-card>
       </v-col>

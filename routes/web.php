@@ -45,7 +45,9 @@ Route::get('/Administrar', [DashboardController::class, 'administrar'])
     ->middleware(['auth', 'verified'])
     ->name('administrar');
 
-Route::get('/dashboard/charts', [DashboardController::class, 'charts']);
+Route::get('/dashboard/charts', [DashboardController::class, 'charts'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.charts');
 // Datos para el módulo de Tickets (Dashboard)
 Route::get('/dashboard/tickets-data', [\App\Http\Controllers\AnalyticsController::class, 'ticketsData'])
     ->middleware(['auth', 'verified'])
