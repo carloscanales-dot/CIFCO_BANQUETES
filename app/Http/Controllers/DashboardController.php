@@ -7,7 +7,7 @@ use Inertia\Inertia;
 use App\Models\Printer;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
-use Modules\Caja\App\Models\PaymentTerminal;
+use Modules\Caja\Models\PaymentTerminal;
 
 class DashboardController extends Controller
 {

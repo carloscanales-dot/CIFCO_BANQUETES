@@ -84,4 +84,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/printers/{printer}', [PrinterController::class, 'destroy'])->name('printers.destroy');
 });
 
+// Proxy HTTPS para impresoras Epson ePOS (evita contenido mixto en producción)
+// Sin middleware de admin para permitir acceso desde cualquier usuario autenticado
+Route::post('/printer-proxy', [PrinterController::class, 'proxyRequest'])
+    ->middleware(['auth'])
+    ->name('printer.proxy');
+
 require __DIR__ . '/auth.php';

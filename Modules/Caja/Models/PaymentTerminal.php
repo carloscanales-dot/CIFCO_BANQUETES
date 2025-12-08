@@ -1,6 +1,6 @@
 <?php
 
-namespace Modules\Caja\App\Models;
+namespace Modules\Caja\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -50,7 +50,7 @@ class PaymentTerminal extends Model
     public function openings()
     {
         return $this->hasMany(
-            \Modules\Caja\App\Models\PaymentTerminalOpening::class,
+            \Modules\Caja\Models\PaymentTerminalOpening::class,
             'payment_terminal_id'
         );
     }

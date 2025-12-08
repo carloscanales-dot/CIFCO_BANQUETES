@@ -5,7 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Modules\Caja\Models\Transaction;
-use Modules\Caja\App\Models\PaymentTerminal;
+use Modules\Caja\Models\PaymentTerminal;
+use Modules\Caja\Models\Account;
 
 class Status extends Model
 {

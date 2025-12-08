@@ -1,12 +1,12 @@
 <?php
 
-namespace Modules\Caja\App\Models;
+namespace Modules\Caja\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\User;
-use Modules\Caja\App\Models\PaymentTerminalOpening;
-use Modules\Caja\App\Models\PaymentTerminal;
+use Modules\Caja\Models\PaymentTerminalOpening;
+use Modules\Caja\Models\PaymentTerminal;
 
 class PaymentTerminalClosing extends Model
 {

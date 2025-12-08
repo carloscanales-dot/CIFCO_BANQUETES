@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Modules\Caja\Models\Transaction;
-use Modules\Caja\App\Models\PaymentTerminal;
-use Modules\Caja\App\Models\PaymentTerminalOpening;
+use Modules\Caja\Models\PaymentTerminal;
+use Modules\Caja\Models\PaymentTerminalOpening;
 use Modules\Ticket\Models\Station; // <-- importar Station
 
 class TransactionController extends Controller

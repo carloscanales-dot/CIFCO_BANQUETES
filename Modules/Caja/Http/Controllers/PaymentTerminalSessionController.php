@@ -5,9 +5,9 @@ namespace Modules\Caja\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
-use Modules\Caja\App\Models\PaymentTerminalOpening;
-use Modules\Caja\App\Models\PaymentTerminalClosing;
-use Modules\Caja\App\Models\PaymentTerminal;
+use Modules\Caja\Models\PaymentTerminalOpening;
+use Modules\Caja\Models\PaymentTerminalClosing;
+use Modules\Caja\Models\PaymentTerminal;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -213,7 +213,7 @@ class PaymentTerminalSessionController extends Controller
 
     public function exportClosing($closingId)
     {
-        $closing = \Modules\Caja\App\Models\PaymentTerminalClosing::with([
+        $closing = \Modules\Caja\Models\PaymentTerminalClosing::with([
             'opening.terminal.station',
             'opening.terminal.user',
         ])->findOrFail($closingId);

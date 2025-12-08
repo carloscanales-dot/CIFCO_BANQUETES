@@ -5,7 +5,7 @@ namespace Modules\Caja\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Inertia;
-use Modules\Caja\App\Models\PaymentTerminal;
+use Modules\Caja\Models\PaymentTerminal;
 use App\Models\User;
 use Modules\Ticket\Models\Fair;
 

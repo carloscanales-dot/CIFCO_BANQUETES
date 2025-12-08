@@ -1,10 +1,12 @@
 <?php
 
-namespace App\Models;
+namespace Modules\Caja\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Modules\Ticket\Models\Employee;
+use App\Models\Status;
+use App\Models\User;
 
 
 class Account extends Model
