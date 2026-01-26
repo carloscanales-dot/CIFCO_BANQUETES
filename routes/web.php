@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\EmployeeController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PrinterController;
@@ -76,6 +77,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Acción que guarda la nueva contraseña
     Route::post('/user/update-password', [UserManagementController::class, 'updatePassword'])
         ->name('user.update-password');
+
+    // Administración de empleados
+    Route::get('/admin/employees', [EmployeeController::class, 'index'])->name('admin.employees');
+    Route::post('/admin/employees', [EmployeeController::class, 'store'])->name('employees.store');
+    Route::put('/admin/employees/{id}', [EmployeeController::class, 'update'])->name('employees.update');
 
     // Administración de impresoras
     Route::get('/admin/printers', [PrinterController::class, 'index'])->name('admin.printers');

@@ -37,6 +37,12 @@ export default {
       roles: ['Administrador'],
     },
     {
+      title: 'Empleados',
+      icon: 'mdi-account-tie',
+      to: '/admin/employees',
+      roles: ['Administrador'],
+    },
+    {
       title: 'Payment Terminals',
       icon: 'mdi-credit-card-outline',
       to: '/payment-terminals',

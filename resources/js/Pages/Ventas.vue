@@ -454,78 +454,6 @@ const props = defineProps({
 let epos = null;
 let printer = null;
 
-// Helper para conectar a la impresora usando proxy HTTPS
-const connectPrinterWithProxy = (printerIp) => {
-    return new Promise((resolve, reject) => {
-        if (!printerIp) {
-            reject(new Error('No hay IP de impresora configurada'));
-            return;
-        }
-
-        try {
-            // Crear instancia de ePOS
-            epos = new window.epson.ePOSDevice();
-
-            // En producción (HTTPS), usamos un proxy en el servidor
-            // En desarrollo (HTTP), conectamos directamente
-            const isProduction = window.location.protocol === 'https:';
-
-            if (isProduction) {
-                // Usar proxy del servidor Laravel
-                // El proxy acepta: printer_ip, path, method
-                const proxyHandler = {
-                    request: (req) => {
-                        return axios.post('/printer-proxy', {
-                            printer_ip: printerIp,
-                            path: req.path || '',
-                            method: req.method || 'GET'
-                        });
-                    }
-                };
-                // Conectar al proxy local (HTTPS)
-                epos.connect('localhost', 443, (result) => {
-                    if (result === 'OK') {
-                        epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER,
-                            { crypto: false, buffer: false },
-                            (printerDevice, code) => {
-                                if (printerDevice) {
-                                    printer = printerDevice;
-                                    resolve({ printer, epos });
-                                } else {
-                                    reject(new Error('Error creando dispositivo: ' + code));
-                                }
-                            }
-                        );
-                    } else {
-                        reject(new Error('Error conectando al proxy: ' + result));
-                    }
-                });
-            } else {
-                // En desarrollo, conexión directa
-                epos.connect(printerIp, 8008, (result) => {
-                    if (result === 'OK') {
-                        epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER,
-                            { crypto: false, buffer: false },
-                            (printerDevice, code) => {
-                                if (printerDevice) {
-                                    printer = printerDevice;
-                                    resolve({ printer, epos });
-                                } else {
-                                    reject(new Error('Error creando dispositivo: ' + code));
-                                }
-                            }
-                        );
-                    } else {
-                        reject(new Error('Error conectando a impresora: ' + result));
-                    }
-                });
-            }
-        } catch (error) {
-            reject(error);
-        }
-    });
-};
-
 // Modal Pago
 const showPaymentModal = ref(false)
 const showClearCartDialog = ref(false)
@@ -679,7 +607,7 @@ const confirmarPago = async () => {
   }
 }
 
-const performFullReconnect = async () => {
+const performFullReconnect = () => {
     if (!props.printer_ip) {
         showToast("No hay una impresora activa asignada.", "error");
         return;
@@ -691,29 +619,36 @@ const performFullReconnect = async () => {
 
     showToast('Reconectando impresora...', 'info');
 
-    try {
-        const { printer: newPrinter, epos: newEpos } = await connectPrinterWithProxy(props.printer_ip);
-        printer = newPrinter;
-        epos = newEpos;
-
-        // Imprimir voucher de prueba
-        try {
-            printer.addTextAlign(printer.ALIGN_CENTER);
-            printer.addTextStyle(false, false, true, printer.COLOR_1);
-            printer.addText('Impresora Reconectada Exitosamente\n');
-            printer.addTextStyle(false, false, false, printer.COLOR_1);
-            printer.addFeedLine(1);
-            printer.addCut(printer.CUT_FEED);
-            printer.send();
-            showToast('Impresora reconectada y voucher de prueba enviado.', 'success');
-        } catch (e) {
-            console.error('Error al imprimir voucher de prueba post-reconexión:', e);
-            showToast('Impresora reconectada pero error al enviar voucher de prueba.', 'warning');
+    epos = new window.epson.ePOSDevice();
+    epos.connect(props.printer_ip, 8008, (connectResult) => {
+        if (connectResult === 'OK') {
+            epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, createResult) => {
+                if (createResult === 'OK') {
+                    printer = printerDevice;
+                    // On successful reconnect, also print the test voucher
+                    try {
+                        printer.addTextAlign(printer.ALIGN_CENTER);
+                        printer.addTextStyle(false, false, true, printer.COLOR_1);
+                        printer.addText('Impresora Reconectada Exitosamente\n');
+                        printer.addTextStyle(false, false, false, printer.COLOR_1);
+                        printer.addFeedLine(1);
+                        printer.addCut(printer.CUT_FEED);
+                        printer.send();
+                        showToast('Impresora reconectada y voucher de prueba enviado.', 'success');
+                    } catch (e) {
+                        console.error('Error al imprimir voucher de prueba post-reconexión:', e);
+                        showToast('Error al enviar voucher de prueba.', 'error');
+                    }
+                } else {
+                    console.error('Error creating printer device after reconnect:', createResult);
+                    showToast(`Error al crear dispositivo: ${createResult}`, 'error');
+                }
+            });
+        } else {
+            console.error('Error reconnecting to printer:', connectResult);
+            showToast('Impresora Hibernando', 'warning');
         }
-    } catch (error) {
-        console.error('Error reconectando a impresora:', error);
-        showToast(`Error al reconectar impresora: ${error.message}`, 'error');
-    }
+    });
 };
 
 const reconnectPrinter = () => {
@@ -783,13 +718,21 @@ onMounted(async () => {
         return;
     }
 
-    try {
-        await connectPrinterWithProxy(props.printer_ip);
-        // La conexión fue exitosa, printer y epos ya están asignados por la función
-    } catch (error) {
-        console.error('Error al conectar impresora en onMounted:', error);
-        showToast("No se pudo conectar a la impresora: " + error.message, "error");
-    }
+    epos = new window.epson.ePOSDevice();
+    epos.connect(props.printer_ip, 8008, (result) => {
+        if (result !== 'OK') {
+            showToast("No se pudo conectar a la impresora: " + result, "error");
+            return;
+        }
+
+        epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, code) => {
+            if (!printerDevice) {
+                showToast("Error creando dispositivo: " + code, "error");
+                return;
+            }
+            printer = printerDevice;
+        });
+    });
 });
 
 // refrescar cuando cambie el estado de la terminal (ej: a pre-cierre)
