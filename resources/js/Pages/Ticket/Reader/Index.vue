@@ -49,6 +49,14 @@ const modalNoAsignado = computed({
     if (!val) qrStore.reset()
   }
 })
+
+// Modal para ticket ya escaneado en esta estación
+const modalYaEscaneado = computed({
+  get: () => form.value.status === 4,
+  set: (val) => {
+    if (!val) qrStore.reset()
+  }
+})
 </script>
 
 <template>
@@ -169,6 +177,29 @@ const modalNoAsignado = computed({
         <VCardActions>
           <VSpacer />
           <VBtn color="secondary" variant="tonal" @click="modalNoAsignado = false">
+            Cerrar
+          </VBtn>
+        </VCardActions>
+      </VCard>
+    </VDialog>
+
+    <!-- ==========================
+         MODAL — TICKET YA ESCANEADO EN ESTA ESTACIÓN
+    ============================ -->
+    <VDialog v-model="modalYaEscaneado" persistent max-width="520">
+      <VCard>
+        <VCardTitle class="text-warning text-h6">
+          <VIcon icon="mdi-alert-circle" class="mr-2"></VIcon>
+          Ticket ya escaneado
+        </VCardTitle>
+
+        <VCardText>
+          {{ alert }}
+        </VCardText>
+
+        <VCardActions>
+          <VSpacer />
+          <VBtn color="secondary" variant="tonal" @click="modalYaEscaneado = false">
             Cerrar
           </VBtn>
         </VCardActions>

@@ -63,13 +63,13 @@ const submit = async () => {
             </VCol>
             <VCol cols="12" md="6" sm="12">
               <VSelect
-                v-model="ticketStore.form.status"
-                label="Estatus"
+                v-model="ticketStore.form.status_id"
+                label="Estado inicial"
                 :items="statusList"
                 item-title="title"
                 item-value="value"
                 clearable
-                :error-messages="ticketStore.errors.status"
+                :error-messages="ticketStore.errors.status_id"
               ></VSelect>
             </VCol>
           </VRow>
@@ -109,7 +109,11 @@ const submit = async () => {
 export default {
   data() {
     return {
-      statusList: [{ title: 'Disponible', value: 1 }],
+      statusList: [
+        { title: 'Pendiente', value: 3 },
+        { title: 'Aplicado', value: 1 },
+        { title: 'Anulado', value: 2 },
+      ],
     }
   },
 }

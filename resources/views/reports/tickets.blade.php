@@ -31,7 +31,7 @@
         width: calc(100% / {{ $columns }});
         height: 120mm; /* puedes ajustar esto según el espacio que necesites */
         text-align: center;
-        background-image: url("{{ public_path('arte-gamer2.jpeg') }}");
+        background-image: url("{{ public_path('arte_cifcoepico.png') }}");
         background-size: cover; /* hace que ocupe todo el espacio */
         background-repeat: no-repeat;
         background-position: center;

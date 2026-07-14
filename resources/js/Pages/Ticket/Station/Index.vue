@@ -116,8 +116,8 @@ const applyFilter = () => {
         <VRow dense>
           <VCol cols="12">
             <VDataTableServer
-              :items="items"
-              :items-length="totalItems"
+              :items="items || []"
+              :items-length="totalItems || 0"
               :headers="headers"
               :search="search"
               :loading="isLoading"

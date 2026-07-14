@@ -3,10 +3,15 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\EmployeeController;
+use App\Http\Controllers\Admin\ReprintLogController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PrinterController;
 use App\Http\Controllers\AnalyticsController;
+use App\Http\Controllers\ReporteController;
+use App\Http\Controllers\TransaccionController;
+use App\Http\Controllers\ReporteEmpleadoController;
+use App\Http\Controllers\TransaccionEmpleadoController;
 
 use Inertia\Inertia;
 
@@ -88,6 +93,33 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/printers', [PrinterController::class, 'store'])->name('printers.store');
     Route::put('/printers/{printer}', [PrinterController::class, 'update'])->name('printers.update');
     Route::delete('/printers/{printer}', [PrinterController::class, 'destroy'])->name('printers.destroy');
+
+    // Historial de reimpresiones
+    Route::get('/admin/reprint-logs', [ReprintLogController::class, 'index'])->name('admin.reprint-logs');
+
+    // Reportes de Ventas Normales
+    Route::get('/reportes/ventas', [ReporteController::class, 'index'])->name('reportes.ventas.index');
+    Route::get('/api/reportes/data', [ReporteController::class, 'data'])->name('reportes.data');
+    Route::get('/api/reportes/download/pdf', [ReporteController::class, 'downloadPDF'])->name('reportes.download.pdf');
+    Route::get('/api/reportes/download/excel', [ReporteController::class, 'downloadExcel'])->name('reportes.download.excel');
+
+    // Reportes de Empleados
+    Route::get('/reportes/empleados', [ReporteEmpleadoController::class, 'index'])->name('reportes.empleados.index');
+    Route::get('/api/reportes/empleados/data', [ReporteEmpleadoController::class, 'data'])->name('reportes.empleados.data');
+    Route::get('/api/reportes/empleados/download/pdf', [ReporteEmpleadoController::class, 'downloadPDF'])->name('reportes.empleados.download.pdf');
+    Route::get('/api/reportes/empleados/download/excel', [ReporteEmpleadoController::class, 'downloadExcel'])->name('reportes.empleados.download.excel');
+
+    // Transacciones de Ventas Normales
+    Route::get('/transacciones/ventas', [TransaccionController::class, 'index'])->name('transacciones.ventas.index');
+    Route::get('/api/transacciones/list', [TransaccionController::class, 'list'])->name('transacciones.list');
+    Route::get('/api/transacciones/{id}/details', [TransaccionController::class, 'details'])->name('transacciones.details');
+    Route::put('/api/transacciones/{id}/cancel', [TransaccionController::class, 'cancel'])->name('transacciones.cancel');
+
+    // Transacciones de Empleados
+    Route::get('/transacciones/empleados', [TransaccionEmpleadoController::class, 'index'])->name('transacciones.empleados.index');
+    Route::get('/api/transacciones/empleados/list', [TransaccionEmpleadoController::class, 'list'])->name('transacciones.empleados.list');
+    Route::get('/api/transacciones/empleados/{id}/details', [TransaccionEmpleadoController::class, 'details'])->name('transacciones.empleados.details');
+    Route::put('/api/transacciones/empleados/{id}/cancel', [TransaccionEmpleadoController::class, 'cancel'])->name('transacciones.empleados.cancel');
 });
 
 // Proxy HTTPS para impresoras Epson ePOS (evita contenido mixto en producción)

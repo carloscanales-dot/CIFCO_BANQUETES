@@ -46,7 +46,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/historial-ventas', [\Modules\Caja\Http\Controllers\TransactionController::class, 'index'])
             ->name('historial-ventas.index');
 
+        Route::get('/historial-empleados', [\Modules\Caja\Http\Controllers\TransactionController::class, 'empleados'])
+            ->name('historial-empleados.index');
+
         Route::post('/historial-ventas/{transaction}/refund', [\Modules\Caja\Http\Controllers\TransactionController::class, 'refund'])
             ->name('historial-ventas.refund');
+
+        Route::post('/transactions/{transaction}/reprint', [\Modules\Caja\Http\Controllers\TransactionController::class, 'reprint'])
+            ->name('transactions.reprint');
 
 });

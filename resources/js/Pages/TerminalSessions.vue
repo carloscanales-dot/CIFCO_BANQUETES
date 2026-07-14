@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { usePage, router, Head } from '@inertiajs/vue3'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useToast } from 'vue-toastification'
@@ -8,7 +8,24 @@ import axios from 'axios'
 const toast = useToast()
 const page = usePage()
 
-const terminals = computed(() => page.props.terminals?.data ?? [])
+const terminals = computed(() => {
+    const t = page.props.terminals ?? {}
+    console.log('Terminals data:', t)
+    return {
+        data: Array.isArray(t.data) ? t.data : [],
+        current_page: t.current_page ?? 1,
+        last_page: t.last_page ?? 1,
+        per_page: t.per_page ?? 10,
+        total: t.total ?? (Array.isArray(t.data) ? t.data.length : 0),
+    }
+})
+
+const pageNumber = ref(terminals.value?.current_page ?? 1)
+
+// Sincronizar con valores del backend
+watch(() => terminals.value.current_page, (newPage) => {
+    pageNumber.value = newPage
+})
 
 // Modal
 const dialog = ref(false)
@@ -22,6 +39,85 @@ const openingAmount = ref(0)
 const closingReal = ref(0)
 const closingNotes = ref('')
 const closingPosReal = ref(0)
+
+// Paginación
+function onPageChange(newPage) {
+    if (!newPage) return
+    router.get('/terminal-sessions', {
+        page: newPage,
+        perPage: 10
+    }, {
+        preserveState: false,
+        preserveScroll: false,
+    })
+}
+
+// ==========================================
+// CÁLCULOS DE DIFERENCIAS EN TIEMPO REAL
+// ==========================================
+
+// Montos esperados del sistema
+const expectedCash = computed(() => {
+    const val = Number(selectedTerminal.value?.openings?.[0]?.total_cash ?? 0)
+    console.log('expectedCash computed:', val)
+    return val
+})
+
+const expectedPos = computed(() => {
+    const val = Number(selectedTerminal.value?.openings?.[0]?.total_card ?? 0)
+    console.log('expectedPos computed:', val)
+    return val
+})
+
+// Diferencias por método
+const cashDifference = computed(() => (closingReal.value || 0) - expectedCash.value)
+const posDifference = computed(() => (closingPosReal.value || 0) - expectedPos.value)
+const totalDifference = computed(() => cashDifference.value + posDifference.value)
+
+// Textos de diferencia
+const cashDifferenceText = computed(() => {
+  if (cashDifference.value > 0) return 'SOBRANTE'
+  if (cashDifference.value < 0) return 'FALTANTE'
+  return 'CUADRADA'
+})
+
+const posDifferenceText = computed(() => {
+  if (posDifference.value > 0) return 'SOBRANTE'
+  if (posDifference.value < 0) return 'FALTANTE'
+  return 'CUADRADA'
+})
+
+// Colores para las diferencias
+const cashDifferenceColor = computed(() => {
+  if (cashDifference.value > 0) return 'bg-green-lighten-4'
+  if (cashDifference.value < 0) return 'bg-red-lighten-4'
+  return 'bg-blue-lighten-4'
+})
+
+const posDifferenceColor = computed(() => {
+  if (posDifference.value > 0) return 'bg-green-lighten-4'
+  if (posDifference.value < 0) return 'bg-red-lighten-4'
+  return 'bg-blue-lighten-4'
+})
+
+// Estado general de la caja
+const generalStatusText = computed(() => {
+  if (totalDifference.value > 0) return 'CAJA CON SOBRANTE'
+  if (totalDifference.value < 0) return 'CAJA CON FALTANTE'
+  return 'CAJA CUADRADA'
+})
+
+const generalStatusIcon = computed(() => {
+  if (totalDifference.value > 0) return '✅'
+  if (totalDifference.value < 0) return '⚠️'
+  return '✔️'
+})
+
+const generalStatusColor = computed(() => {
+  if (totalDifference.value > 0) return 'green'
+  if (totalDifference.value < 0) return 'red'
+  return 'blue'
+})
 
 function openModalOpen(terminal) {
     modalMode.value = 'open'
@@ -69,6 +165,9 @@ async function confirmClose() {
             pos_real_amount: closingPosReal.value,
             notes: closingNotes.value,
             user_id: selectedTerminal.value.user?.id ?? null,
+            cash_difference: cashDifference.value,
+            pos_difference: posDifference.value,
+            status_text: generalStatusText.value,
         })
 
         if (response.data.success) {
@@ -108,7 +207,11 @@ function exportClosing(item) {
                 <v-card-title class="text-h6 font-weight-bold">Aperturas y Cierres</v-card-title>
                 <v-divider class="my-3" />
 
-                <v-data-table :items="terminals" dense :headers="[
+                <v-data-table
+                    :items="terminals.data"
+                    dense
+                    hide-default-footer
+                    :headers="[
                     { title: 'Terminal', key: 'terminal_name' },
                     { title: 'Estado', key: 'status_id' },
                     { title: 'Monto', key: 'amount' },
@@ -171,12 +274,29 @@ function exportClosing(item) {
 
                     </template>
                 </v-data-table>
+
+                <!-- Paginación sencilla -->
+                <div v-if="terminals.last_page > 1" class="d-flex justify-center mt-4">
+                    <v-pagination
+                        v-model="pageNumber"
+                        :length="terminals.last_page"
+                        @update:model-value="onPageChange"
+                        total-visible="7"
+                        color="black"
+                    />
+                </div>
+
+                <!-- Debug info -->
+                <div class="text-caption text-grey mt-2 text-center">
+                    Mostrando {{ terminals.data.length }} de {{ terminals.total }} registros
+                    (Página {{ terminals.current_page }} de {{ terminals.last_page }})
+                </div>
             </v-card>
 
             <!-- ========================== -->
             <!-- MODAL -->
             <!-- ========================== -->
-            <v-dialog v-model="dialog" max-width="420">
+            <v-dialog v-model="dialog" :max-width="modalMode === 'close' ? 900 : 420">
                 <v-card>
 
                     <v-card-title class="text-h6 font-weight-bold">
@@ -235,16 +355,78 @@ function exportClosing(item) {
                         <v-text-field v-if="modalMode === 'open'" v-model="openingAmount" label="Monto de apertura"
                             type="number" prefix="$" variant="solo" density="compact" />
 
-                        <!-- Cierre -->
+                        <!-- Cierre con vista mejorada de diferencias -->
                         <div v-else>
-                            <v-text-field v-model="closingReal" label="Efectivo recibido" type="number" prefix="$"
-                                variant="solo" density="compact" class="mb-2" />
+                            <v-row>
+                                <!-- Columna izquierda: Efectivo -->
+                                <v-col cols="12" md="6">
+                                    <v-card variant="outlined" class="pa-3">
+                                        <div class="text-subtitle-2 font-weight-bold mb-2">💵 EFECTIVO</div>
 
-                            <v-text-field v-model="closingPosReal" label="Monto POS (tarjeta) recibido" type="number"
-                                prefix="$" variant="solo" density="compact" class="mb-2" />
+                                        <div class="mb-2">
+                                            <div class="text-caption text-grey">Esperado del sistema:</div>
+                                            <div class="text-h6">${{ expectedCash.toFixed(2) }}</div>
+                                        </div>
 
-                            <v-textarea v-model="closingNotes" label="Observaciones" variant="solo" density="compact"
-                                rows="2" />
+                                        <v-text-field v-model.number="closingReal" label="Efectivo recibido"
+                                            type="number" prefix="$" variant="outlined" density="comfortable"
+                                            hide-details />
+
+                                        <v-divider class="my-3" />
+
+                                        <div :class="['text-center pa-2 rounded', cashDifferenceColor]">
+                                            <div class="text-caption">Diferencia</div>
+                                            <div class="text-h6 font-weight-bold">
+                                                {{ cashDifference >= 0 ? '+' : '' }}${{ cashDifference.toFixed(2) }}
+                                            </div>
+                                            <div class="text-caption font-weight-bold">{{ cashDifferenceText }}</div>
+                                        </div>
+                                    </v-card>
+                                </v-col>
+
+                                <!-- Columna derecha: POS/Tarjeta -->
+                                <v-col cols="12" md="6">
+                                    <v-card variant="outlined" class="pa-3">
+                                        <div class="text-subtitle-2 font-weight-bold mb-2">💳 POS / TARJETA</div>
+
+                                        <div class="mb-2">
+                                            <div class="text-caption text-grey">Esperado del sistema:</div>
+                                            <div class="text-h6">${{ expectedPos.toFixed(2) }}</div>
+                                        </div>
+
+                                        <v-text-field v-model.number="closingPosReal" label="POS recibido"
+                                            type="number" prefix="$" variant="outlined" density="comfortable"
+                                            hide-details />
+
+                                        <v-divider class="my-3" />
+
+                                        <div :class="['text-center pa-2 rounded', posDifferenceColor]">
+                                            <div class="text-caption">Diferencia</div>
+                                            <div class="text-h6 font-weight-bold">
+                                                {{ posDifference >= 0 ? '+' : '' }}${{ posDifference.toFixed(2) }}
+                                            </div>
+                                            <div class="text-caption font-weight-bold">{{ posDifferenceText }}</div>
+                                        </div>
+                                    </v-card>
+                                </v-col>
+                            </v-row>
+
+                            <!-- Resumen General -->
+                            <v-card :color="generalStatusColor" class="mt-4 pa-4" variant="tonal">
+                                <div class="text-center">
+                                    <div class="text-h6 font-weight-bold mb-1">{{ generalStatusIcon }} {{
+                                        generalStatusText }}</div>
+                                    <div class="text-body-2">
+                                        Diferencia Total:
+                                        <strong>{{ totalDifference >= 0 ? '+' : '' }}${{ totalDifference.toFixed(2)
+                                            }}</strong>
+                                    </div>
+                                </div>
+                            </v-card>
+
+                            <!-- Observaciones -->
+                            <v-textarea v-model="closingNotes" label="Observaciones" variant="outlined"
+                                density="comfortable" rows="2" class="mt-4" />
                         </div>
                     </v-card-text>
 

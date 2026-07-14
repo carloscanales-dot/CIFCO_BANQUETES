@@ -194,13 +194,13 @@ class DashboardController extends Controller
             ->where('transactions.status_id', 1)
             ->where('transactions.transaction_type_id', 2)
             ->groupBy('transaction_detail.product_id', 'products.product_name')
-            ->selectRaw('products.product_name, COUNT(*) as count')
-            ->orderByDesc('count')
+            ->selectRaw('products.product_name, SUM(transaction_detail.total) as total')
+            ->orderByDesc('total')
             ->limit(8)
             ->get()
             ->map(fn($item) => [
                 'label' => $item->product_name,
-                'value' => $item->count
+                'value' => round($item->total, 2)
             ])->values();
 
         // Tendencia de venta empleado por día
@@ -214,7 +214,7 @@ class DashboardController extends Controller
             ->get()
             ->map(fn($item) => [
                 'label' => $item->date,
-                'value' => $item->daily_count
+                'value' => round($item->daily_amount, 2)
             ])->values();
 
         // Cantidad de transacciones empleado
@@ -228,7 +228,7 @@ class DashboardController extends Controller
             ->join('tickets', 'station_tickets.ticket_id', '=', 'tickets.id')
             ->join('products', 'tickets.product_id', '=', 'products.id')
             ->join('stations', 'station_tickets.station_id', '=', 'stations.id')
-            ->where('tickets.status', 0) // Canjeados
+            ->where('tickets.status_id', 1) // APLICADO (anteriormente "canjeados")
             ->select('station_tickets.*', 'products.product_name', 'stations.station_name', 'station_tickets.created_at')
             ->get();
 

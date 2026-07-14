@@ -24,7 +24,7 @@ class TicketRequest extends FormRequest
             'product_id' => 'required',
             'quantity' => 'required|numeric|gt:0',
             'generated_for' => 'nullable|string|max:255',
-            'status' => 'required'
+            'status_id' => 'required|exists:status,id'
         ];
     }
 
@@ -36,7 +36,8 @@ class TicketRequest extends FormRequest
         return [
             'product_id.required' => 'El campo :attribute es obligatorio.',
             'quantity.required' => 'El campo :attribute es obligatorio.',
-            'status.required' => 'El campo :attribute es obligatorio.'
+            'status_id.required' => 'El campo :attribute es obligatorio.',
+            'status_id.exists' => 'El estado seleccionado no es válido.'
         ];
     }
 }

@@ -6,7 +6,7 @@ import EmployeeSalesTab from '@/Pages/Analytics/Tabs/EmployeeSalesTab.vue'
 import TicketsTab from '@/Pages/Analytics/Tabs/TicketsTab.vue'
 
 import { Head } from '@inertiajs/vue3'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import axios from 'axios'
 
 const chartData = ref({
@@ -15,6 +15,8 @@ const chartData = ref({
   tickets: { byProduct: [], byDate: [], byStation: [], total: 0 }
 })
 const isLoading = ref(false)
+const lastUpdate = ref(null)
+let refreshInterval = null
 
 // Tab activo
 const tab = ref('sales')
@@ -26,15 +28,50 @@ const breadcrumbs = ref([
   },
 ])
 
-onMounted(async () => {
-  isLoading.value = true
+// Función para obtener datos (silenciosa para auto-refresh)
+const fetchData = async (showLoading = true) => {
+  if (showLoading) {
+    isLoading.value = true
+  }
+
   try {
     const { data } = await axios.get('/dashboard/charts')
-    chartData.value = data
+
+    // Actualizar solo los valores sin reemplazar el objeto completo
+    // Esto evita re-renders innecesarios
+    Object.assign(chartData.value.sales, data.sales)
+    Object.assign(chartData.value.employeeSales, data.employeeSales)
+    Object.assign(chartData.value.tickets, data.tickets)
+
+    lastUpdate.value = new Date()
   } catch (error) {
     console.error('Error al obtener datos del dashboard:', error)
   } finally {
-    isLoading.value = false
+    if (showLoading) {
+      isLoading.value = false
+    }
+  }
+}
+
+// Recargar datos manualmente (con loading visible)
+const refreshData = () => {
+  fetchData(true)
+}
+
+onMounted(() => {
+  // Cargar datos iniciales
+  fetchData(true)
+
+  // Auto-refresh cada 10 segundos (10000ms) - sin mostrar loading
+  refreshInterval = setInterval(() => {
+    fetchData(false)
+  }, 10000)
+})
+
+onUnmounted(() => {
+  // Limpiar el intervalo cuando se desmonte el componente
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
   }
 })
 </script>
@@ -44,9 +81,32 @@ onMounted(async () => {
   <Head title="Panel" />
 
   <AdminLayout>
-    <div class="mb-5">
-      <h5 class="text-h5 font-weight-bold">Panel de comando</h5>
-      <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
+    <div class="mb-5 d-flex justify-space-between align-center">
+      <div>
+        <h5 class="text-h5 font-weight-bold">Panel de comando</h5>
+        <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
+      </div>
+      <div class="d-flex align-center gap-2">
+        <VChip v-if="lastUpdate" size="small" :color="isLoading ? 'warning' : 'success'" variant="tonal">
+          <VIcon start :icon="isLoading ? 'mdi-loading mdi-spin' : 'mdi-check-circle'"></VIcon>
+          {{ lastUpdate.toLocaleTimeString() }}
+        </VChip>
+        <VTooltip text="Actualización automática cada 10 segundos" location="bottom">
+          <template #activator="{ props }">
+            <VIcon v-bind="props" icon="mdi-information-outline" size="small" color="info"></VIcon>
+          </template>
+        </VTooltip>
+        <VBtn
+          color="primary"
+          variant="tonal"
+          size="small"
+          prepend-icon="mdi-refresh"
+          :loading="isLoading"
+          @click="refreshData"
+        >
+          Actualizar
+        </VBtn>
+      </div>
     </div>
 
     <v-card>

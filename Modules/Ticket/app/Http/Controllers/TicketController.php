@@ -103,13 +103,32 @@ class TicketController extends Controller
     }
 
     /**
+     * Cancel (anular) a ticket instead of deleting it.
+     */
+    public function cancel(Ticket $ticket)
+    {
+        // Cambiar el status_id a 2 (ANULADO)
+        $ticket->update(['status_id' => 2]);
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'message' => 'Ticket anulado correctamente',
+                'ticket' => $ticket
+            ]);
+        }
+
+        return redirect()->back()->with('success', sprintf('Ticket anulado correctamente: %s', $ticket->uuid));
+    }
+
+    /**
      * Remove the specified resource from storage.
      */
     public function destroy(Ticket $ticket)
     {
-        $ticket->delete();
+        // En lugar de eliminar, anulamos el ticket
+        $ticket->update(['status_id' => 2]);
 
-        return redirect()->back()->with('success', sprintf('Eliminado con éxito, el ticket %s', $ticket->ticket_name));
+        return redirect()->back()->with('success', sprintf('Ticket anulado correctamente: %s', $ticket->uuid));
     }
 
     protected function setDataStore($request)
@@ -133,7 +152,7 @@ class TicketController extends Controller
         for ($i = 0; $i < $request->get('quantity'); $i++) {
             $inserts[] = [
                 'uuid' => implode('-', [$prefix, $max_product_id]),
-                'status' => $request->get('status'),
+                'status_id' => $request->get('status_id'),
                 'product_id' => $request->get('product_id'),
                 'generated_for' => $request->get('generated_for'),
                 'created_at' => $current_date,

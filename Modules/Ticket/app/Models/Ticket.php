@@ -2,6 +2,7 @@
 
 namespace Modules\Ticket\Models;
 
+use App\Models\Status;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,14 +13,14 @@ class Ticket extends Model
 
     protected $fillable = [
         'uuid',
-        'status',
+        'status_id',
         'product_id',
         'generated_for',
         'redeem_date',
     ];
 
     protected $casts = [
-        'status' => 'integer',
+        'status_id' => 'integer',
         'redeem_date' => 'datetime',
     ];
 
@@ -32,18 +33,34 @@ class Ticket extends Model
     }
 
     /**
-     * Scope para filtrar tickets activos (status = 1).
+     * Relación: un ticket pertenece a un status.
      */
-    public function scopeActive($query)
+    public function status(): BelongsTo
     {
-        return $query->where('status', 1);
+        return $this->belongsTo(Status::class, 'status_id');
     }
 
     /**
-     * Scope para filtrar tickets canjeados.
+     * Scope para filtrar tickets pendientes (status_id = 3).
      */
-    public function scopeRedeemed($query)
+    public function scopePending($query)
     {
-        return $query->whereNotNull('redeem_date');
+        return $query->where('status_id', 3);
+    }
+
+    /**
+     * Scope para filtrar tickets aplicados (status_id = 1).
+     */
+    public function scopeApplied($query)
+    {
+        return $query->where('status_id', 1);
+    }
+
+    /**
+     * Scope para filtrar tickets anulados (status_id = 2).
+     */
+    public function scopeCanceled($query)
+    {
+        return $query->where('status_id', 2);
     }
 }

@@ -37,8 +37,8 @@ onMounted(() => {
         <VRow dense>
           <VCol cols="12" md="12" sm="12">
             <VDataTableServer
-              :items="items"
-              :items-length="totalItems"
+              :items="items || []"
+              :items-length="totalItems || 0"
               :headers="headers"
               :loading="isLoading"
               @update:options="loadItems"

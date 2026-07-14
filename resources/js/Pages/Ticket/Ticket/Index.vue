@@ -12,9 +12,9 @@ import { filterItems } from 'vuetify/lib/composables/filter'
 import AdminLayout from '@/Layouts/AdminLayout.vue'
 
 const search = ref(null)
-const deleteId = ref(null)
+const cancelId = ref(null)
 const queryString = ref([])
-const deleteDialog = ref(false)
+const cancelDialog = ref(false)
 const generateDialog = ref(false)
 const helpers = inject('helpers')
 const ticketStore = useTicketStore()
@@ -30,14 +30,14 @@ const filterForm = reactive({
   end_id: null,
 })
 
-const deleteItem = (item) => {
-  deleteId.value = item.product_id
-  deleteDialog.value = true
+const cancelItem = (item) => {
+  cancelId.value = item.ticket_id
+  cancelDialog.value = true
 }
 
-const submitDelete = () => {
-  ticketStore.destroy(deleteId.value)
-  deleteDialog.value = false
+const submitCancel = () => {
+  ticketStore.cancel(cancelId.value)
+  cancelDialog.value = false
 }
 
 const loadItems = ({ page, itemsPerPage, sortBy }) => {
@@ -137,40 +137,64 @@ onMounted(() => {
         <VRow dense>
           <VCol cols="12" md="12" sm="12">
             <VDataTableServer
-              :items="items"
-              :items-length="totalItems"
+              :items="items || []"
+              :items-length="totalItems || 0"
               :headers="headers"
               :search="search"
               :loading="isLoading"
               @update:options="loadItems"
             >
               <template #[`item.status`]="{ item }">
-                {{ item.status === 1 ? 'Disponible' : 'Canjeado' }}
+                {{ item.status }}
               </template>
               <template #[`item.action`]="{ item }">
                 <!-- <Link :href="`/fund/currentfund/${item.current_fund_id}/edit`" as="button">
                   <VIcon color="warning" icon="mdi-pencil" />
                 </Link> -->
-                <VIcon class="ml-2" color="error" icon="mdi-delete" @click="deleteItem(item)" />
+                <VBtn
+                  icon="mdi-cancel"
+                  color="error"
+                  variant="text"
+                  size="small"
+                  @click="cancelItem(item)"
+                  :disabled="item.status === 'ANULADO'"
+                >
+                  <VIcon>mdi-cancel</VIcon>
+                  <VTooltip activator="parent" location="top">Anular Ticket</VTooltip>
+                </VBtn>
               </template>
             </VDataTableServer>
           </VCol>
         </VRow>
       </VCardText>
       <VCardActions>
-        <a :href="`/ticket/reader/report?${queryString}&type=excel`" target="_blank">
-          <VIcon icon="mdi-file-excel"></VIcon> Excel
-        </a>
-        <a :href="`/ticket/reader/report?${queryString}&type=pdf`" target="_blank">
-          <VIcon icon="di-file-pdf-box"></VIcon> Pdf
-        </a>
+        <VBtn
+          color="success"
+          variant="tonal"
+          prepend-icon="mdi-file-excel"
+          :href="`/ticket/reader/report?${queryString}&type=excel`"
+          target="_blank"
+        >
+          Exportar Excel
+        </VBtn>
+        <VBtn
+          color="error"
+          variant="tonal"
+          prepend-icon="mdi-file-pdf-box"
+          :href="`/ticket/reader/report?${queryString}&type=pdf`"
+          target="_blank"
+          class="ml-2"
+        >
+          Exportar PDF
+        </VBtn>
       </VCardActions>
     </VCard>
     <DeleteDialog
-      v-model="deleteDialog"
-      title="Eliminar el producto"
-      @close-delete-dialog="deleteDialog = false"
-      @delete-item="submitDelete"
+      v-model="cancelDialog"
+      title="Anular el ticket"
+      message="¿Está seguro que desea anular este ticket? Esta acción no se puede deshacer y el ticket no podrá ser usado en el scanner."
+      @close-delete-dialog="cancelDialog = false"
+      @delete-item="submitCancel"
     ></DeleteDialog>
     <GenTicketDialog v-model="generateDialog" @result="genSubmit"></GenTicketDialog>
   </AdminLayout>
@@ -193,8 +217,8 @@ export default {
         { title: 'Tickets', disabled: true },
       ],
       statusList: [
-        { title: 'Disponible', value: 'D' },
-        { title: 'Canjeado', value: 'C' },
+        { title: 'Pendiente', value: 'D' },
+        { title: 'Aplicado', value: 'C' },
         { title: 'Anulado', value: 'A' },
       ],
     }

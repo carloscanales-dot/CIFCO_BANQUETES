@@ -33,13 +33,13 @@ class StationTicketController extends Controller
         }
 
         // JOIN: tickets → station_tickets
-        // Mostrar solo tickets canjeados (status = 0) en la estación del usuario
+        // Mostrar solo tickets aplicados (status_id = 1) en la estación del usuario
         $query = DB::table('station_tickets')
             ->join('tickets', 'station_tickets.ticket_id', '=', 'tickets.id')
             ->join('products', 'tickets.product_id', '=', 'products.id')
             ->join('stations', 'station_tickets.station_id', '=', 'stations.id')
             ->where('station_tickets.station_id', $userStation->station_id)
-            ->where('tickets.status', 0)  // Solo tickets canjeados (status 0)
+            ->where('tickets.status_id', 1)  // Solo tickets aplicados (APLICADO = 1)
             ->when($request->get('search'), function ($query, $search) {
                 return $query->where(function ($query) use ($search) {
                     foreach ($search as $field => $value) {

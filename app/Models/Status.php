@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Modules\Caja\Models\Transaction;
 use Modules\Caja\Models\PaymentTerminal;
 use Modules\Caja\Models\Account;
+use Modules\Ticket\Models\Ticket;
 
 class Status extends Model
 {
@@ -38,5 +39,11 @@ class Status extends Model
     public function paymentTerminals()
     {
         return $this->hasMany(PaymentTerminal::class, 'status_id');
+    }
+
+    // Relación con tickets
+    public function tickets()
+    {
+        return $this->hasMany(Ticket::class, 'status_id');
     }
 }

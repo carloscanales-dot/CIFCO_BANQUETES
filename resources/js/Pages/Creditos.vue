@@ -35,11 +35,6 @@
         </div>
 
         <div v-else>
-            <v-row class="mb-2">
-                <v-col cols="12" class="d-flex justify-end">
-                    <v-btn color="info" class="mr-2" @click="reconnectPrinter">Reconectar Impresora</v-btn>
-                </v-col>
-            </v-row>
             <v-row>
                 <!-- Panel lateral: detalle del crédito -->
                 <v-col cols="12" md="4">
@@ -79,7 +74,13 @@
                             </div>
                         </v-card-text>
                         <v-card-actions>
-                            <v-btn color="primary" block @click="printCreditReceipt">
+                            <v-btn
+                                color="primary"
+                                block
+                                @click="printCreditReceipt"
+                                :disabled="processing"
+                                :loading="processing"
+                            >
                                 Guardar Crédito
                             </v-btn>
                         </v-card-actions>
@@ -120,7 +121,6 @@ import CreditoLayout from '@/Layouts/CreditoLayout.vue'
 import { Head, usePage } from '@inertiajs/vue3'
 import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { useCartStore } from '@/Stores/cart'
-import { logoBitmap } from '../logoBitmap.js'
 import axios from 'axios'
 
 const page = usePage()
@@ -130,6 +130,7 @@ const employees = ref([])
 const selectedEmployee = ref(null)
 const cart = useCartStore()
 const pedidoCounter = ref(1)
+const processing = ref(false) // Para evitar múltiples clics
 
 // -- PRE-CIERRE VARS --
 const currentTerminal = ref(null)
@@ -148,98 +149,6 @@ const props = defineProps({
     fair_name: String,
 })
 
-let epos = null
-let printer = null
-
-const performFullReconnect = () => {
-    if (!props.printer_ip) {
-        showToast("No hay una impresora activa asignada a esta estación.", "error");
-        return;
-    }
-    if (epos) {
-        epos.disconnect();
-    }
-    printer = null;
-
-    showToast('Reconectando impresora...', 'info');
-
-    epos = new window.epson.ePOSDevice();
-    epos.connect(props.printer_ip, 8008, (connectResult) => {
-        if (connectResult === 'OK') {
-            epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, createResult) => {
-                if (createResult === 'OK') {
-                    printer = printerDevice;
-                    try {
-                        printer.addTextAlign(printer.ALIGN_CENTER);
-                        printer.addTextStyle(false, false, true, printer.COLOR_1);
-                        printer.addText('Impresora Reconectada Exitosamente\n');
-                        printer.addTextStyle(false, false, false, printer.COLOR_1);
-                        printer.addFeedLine(1);
-                        printer.addCut(printer.CUT_FEED);
-                        printer.send();
-                        showToast('Impresora reconectada y voucher de prueba enviado.', 'success');
-                    } catch (e) {
-                        console.error('Error al imprimir voucher de prueba post-reconexión:', e);
-                        showToast('Error al enviar voucher de prueba.', 'error');
-                    }
-                } else {
-                    console.error('Error creating printer device after reconnect:', createResult);
-                    showToast(`Error al crear dispositivo: ${createResult}`, 'error');
-                }
-            });
-        } else {
-            console.error('Error reconnecting to printer:', connectResult);
-            showToast('Impresora Hibernando', 'warning');
-        }
-    });
-}
-
-const reconnectPrinter = () => {
-    if (!printer || !epos) {
-        performFullReconnect();
-        return;
-    }
-
-    showToast('Verificando conexión de impresora...', 'info');
-
-    let printFailed = false;
-    const originalOnError = epos.onerror;
-
-    epos.onerror = (err) => {
-        if (!printFailed) {
-            printFailed = true;
-            console.error('Fallo de impresión detectado, iniciando reconexión completa.', err);
-            epos.onerror = originalOnError;
-            performFullReconnect();
-        }
-    };
-
-    try {
-        printer.addTextAlign(printer.ALIGN_CENTER);
-        printer.addText('-----------------------------\n');
-        printer.addText('Actualmente Conectada\n');
-        printer.addText('-----------------------------\n');
-        printer.addFeedLine(1);
-        printer.addCut(printer.CUT_FEED);
-        printer.send();
-    } catch (e) {
-        if (!printFailed) {
-            printFailed = true;
-            console.error('Fallo de impresión (síncrono), iniciando reconexión completa.', e);
-            epos.onerror = originalOnError;
-            performFullReconnect();
-        }
-        return;
-    }
-
-    setTimeout(() => {
-        epos.onerror = originalOnError;
-        if (!printFailed) {
-            showToast('La impresora ya está conectada.', 'success');
-        }
-    }, 2000);
-}
-
 // -- PRE-CIERRE COMPUTED --
 const precloseOpening = computed(() => {
     return currentTerminal.value?.openings?.[0] ?? null
@@ -255,27 +164,6 @@ onMounted(async () => {
 
     await loadEmployees();
     await loadStationProducts();
-    if (!props.printer_ip) {
-        showToast("No hay una impresora activa asignada a esta estación.", "error");
-        return;
-    }
-
-    epos = new window.epson.ePOSDevice();
-
-    epos.connect(props.printer_ip, 8008, (result) => {
-        if (result !== 'OK') {
-            showToast("No se pudo conectar a la impresora: " + result, "error");
-            return;
-        }
-
-        epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, code) => {
-            if (!printerDevice) {
-                showToast("Error creando dispositivo: " + code, "error");
-                return;
-            }
-            printer = printerDevice;
-        });
-    });
 });
 
 watch(() => props.terminal_status, async (newVal) => {
@@ -355,6 +243,10 @@ const loadEmployees = async () => {
 
 /* Guardar crédito e imprimir ticket */
 const printCreditReceipt = async () => {
+    // Prevenir múltiples clics
+    if (processing.value) return
+
+    // Validaciones
     if (!selectedEmployee.value) {
         showToast("Debe seleccionar un empleado antes de guardar el crédito", "warning")
         return
@@ -365,10 +257,8 @@ const printCreditReceipt = async () => {
         return
     }
 
-    if (!printer) {
-        showToast("Impresora no conectada", "error")
-        return
-    }
+    // Establecer procesando INMEDIATAMENTE para deshabilitar el botón
+    processing.value = true
 
     try {
         const response = await axios.post('/ticket/cajas/transactions/store', {
@@ -381,102 +271,20 @@ const printCreditReceipt = async () => {
 
         if (!response.data.success) {
             showToast("Error al guardar crédito: " + response.data.message, "error")
-            return
+            throw new Error("Error al guardar crédito")
         }
 
-        const transactionId = response.data.transaction_id
-        const empleado = selectedEmployee.value
-
-        const printOnce = () => {
-            const sourceWidth = 512;
-            const sourceHeight = 288;
-            const width = 256;
-            const height = 144;
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = sourceWidth;
-            tempCanvas.height = sourceHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-            const tempData = tempCtx.createImageData(sourceWidth, sourceHeight);
-            for (let y = 0; y < sourceHeight; y++) {
-                for (let x = 0; x < sourceWidth; x++) {
-                    const byteIndex = Math.floor(x / 8) + y * Math.ceil(sourceWidth / 8);
-                    const bit = 7 - (x % 8);
-                    const isBlack = (logoBitmap[byteIndex] >> bit) & 1;
-                    const idx = (y * sourceWidth + x) * 4;
-                    tempData.data[idx] = tempData.data[idx + 1] = tempData.data[idx + 2] = isBlack ? 0 : 255;
-                    tempData.data[idx + 3] = 255;
-                }
-            }
-            tempCtx.putImageData(tempData, 0, 0);
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(tempCanvas, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
-            printer.addTextAlign(printer.ALIGN_CENTER);
-            printer.addImage(ctx, 0, 0, width, height, printer.COLOR_1, printer.MODE_MONO);
-            printer.addFeedLine(1);
-            printer.addTextStyle(false, false, true, printer.COLOR_1)
-            printer.addText(`${props.fair_name || 'CIFCO'}\n`);
-            printer.addTextStyle(false, false, false, printer.COLOR_1)
-            printer.addText("https://cifco.gob.sv/\n")
-            printer.addText("-----------------------------\n")
-            const now = new Date()
-            const fecha = now.toLocaleDateString('es-ES', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            })
-            const hora = now.toLocaleTimeString('es-ES', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            })
-            printer.addTextAlign(printer.ALIGN_CENTER)
-            printer.addText(`VENTA N.º ${transactionId}\n`)
-            printer.addText(`${fecha} - ${hora}\n`)
-            printer.addText(`EMPLEADO: ${empleado?.name || 'N/A'}\n`)
-            printer.addText("-----------------------------\n")
-            printer.addText("CANT  ARTÍCULO            P.UNIT   SUBTOTAL\n");
-            printer.addTextAlign(printer.ALIGN_CENTER)
-            cart.cartItems.forEach(item => {
-                const qty = item.quantity.toString().padEnd(4);
-                const name = item.product_name.trim();
-                const unit = item.unit_price.toFixed(2).padStart(4);
-                const total = (item.unit_price * item.quantity).toFixed(2).padStart(7);
-                const max = 18;
-                const firstLine = name.slice(0, max).padEnd(max);
-                printer.addText(`${qty} ${firstLine} ${unit} ${total}\n`);
-                for (let i = max; i < name.length; i += max) {
-                    printer.addText(`     ${name.slice(i, i + max)}\n`);
-                }
-            });
-            printer.addTextAlign(printer.ALIGN_CENTER);
-            printer.addText("-----------------------------\n");
-            printer.addTextStyle(false, false, true, printer.COLOR_1);
-            printer.addText(`TOTAL: $${cart.cartTotal.toFixed(2)}\n`);
-            printer.addTextStyle(false, false, false, printer.COLOR_1);
-            printer.addText("-----------------------------\n");
-            printer.addText("¡GRACIAS POR SU PREFERENCIA!\n");
-            printer.addFeedLine(1);
-            printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
-            printer.addFeedLine(3);
-            printer.addText("F.________________________________\n");
-            printer.addFeedLine(3);
-            printer.addCut(printer.CUT_FEED);
-        };
-        printOnce()
-        printOnce()
-        printer.send()
+        // Limpiar el carrito y el empleado seleccionado
         cart.clearCart()
         selectedEmployee.value = null
         pedidoCounter.value++
-        showToast("Crédito guardado e impreso correctamente", "success")
+        showToast("Crédito guardado correctamente. El ticket se imprimirá automáticamente.", "success")
     } catch (error) {
         console.error("Error procesando crédito:", error)
         showToast("Ocurrió un error al procesar el crédito", "error")
+        throw error // Re-lanzar para mantener consistencia
+    } finally {
+        processing.value = false
     }
 }
 </script>

@@ -9,7 +9,6 @@ import axios from './Plugins/axios'
 import vuetify from './Plugins/vuetify'
 import toast from './Plugins/toast'
 import helpers from './Common/helpers'
-import Vue3Charts from 'vue3-charts'
 
 const pinia = createPinia()
 const appName = window.document.getElementsByTagName('title')[0]?.innerText || 'Laravel'
@@ -21,7 +20,6 @@ createInertiaApp({
     const app = createApp({ provide: { helpers: helpers }, render: () => h(App, props) })
       .use(plugin)
       .use(pinia)
-      .use(Vue3Charts)
 
     const plugins = [axios, vuetify, toast]
 

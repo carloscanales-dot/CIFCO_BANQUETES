@@ -14,7 +14,7 @@ export const useTicketStore = defineStore('ticketStore', () => {
   const isLoading = ref(false)
 
   const form = useForm({
-    status: 1,
+    status_id: 3, // Por defecto PENDIENTE
     quantity: null,
     product_id: null,
     generated_for: null,
@@ -120,6 +120,27 @@ export const useTicketStore = defineStore('ticketStore', () => {
     })
   }
 
+  const cancel = (id) => {
+    isLoading.value = true
+
+    router.patch(`${api_url}/${id}/cancel`, {}, {
+      preserveState: true,
+      preserveScroll: true,
+      onSuccess: () => {
+        toast.success('Ticket anulado correctamente')
+        // Recargar la lista actual
+        window.location.reload()
+      },
+      onError: (error) => {
+        errors.value = error
+        toast.error('Error al anular el ticket')
+      },
+      onFinish: () => {
+        isLoading.value = false
+      }
+    })
+  }
+
   return {
     items,
     tickets,
@@ -132,5 +153,6 @@ export const useTicketStore = defineStore('ticketStore', () => {
     ajaxStore,
     update,
     destroy,
+    cancel,
   }
 })

@@ -46,7 +46,7 @@
 
         <!-- TABLA -->
         <div class="mt-5">
-          <VDataTableServer :items="items" :items-length="totalItems" :headers="headers" :loading="isLoading"
+          <VDataTableServer :items="items || []" :items-length="totalItems || 0" :headers="headers" :loading="isLoading"
             :search="search" class="mono-table elevation-1" @update:options="loadItems">
             <!-- ESTATUS -->
             <template #["item.status"]="{ item }">

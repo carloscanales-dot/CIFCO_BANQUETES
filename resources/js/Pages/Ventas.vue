@@ -70,10 +70,6 @@
         <v-card-actions>
           <v-spacer />
           <v-btn text @click="fetchTerminalForStation">Obtener resumen</v-btn>
-          <v-btn color="primary" @click="reprintPreclose">
-            <v-icon left>mdi-printer</v-icon>
-            Reimprimir Voucher
-          </v-btn>
         </v-card-actions>
       </v-card>
     </div>
@@ -83,7 +79,6 @@
         <div v-else>
             <v-row class="mb-2">
                 <v-col cols="12" class="d-flex justify-end">
-                    <v-btn color="info" class="mr-2" @click="reconnectPrinter">Reconectar Impresora</v-btn>
                     <v-btn color="secondary" @click="openPrecloseModal">Pre-cierre</v-btn>
                 </v-col>
             </v-row>
@@ -185,10 +180,14 @@
     </v-card-text>
 
     <v-card-actions>
-      <v-btn variant="text" @click="cancelarPago">Cancelar</v-btn>
-      <v-btn :disabled="processing" color="primary" @click="confirmarPago">
-        <span v-if="!processing">Confirmar Pago</span>
-        <span v-else>Procesando...</span>
+      <v-btn variant="text" @click="cancelarPago" :disabled="processing">Cancelar</v-btn>
+      <v-btn
+        :disabled="processing"
+        :loading="processing"
+        color="primary"
+        @click="confirmarPago"
+      >
+        Confirmar Pago
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -367,19 +366,8 @@ const onModalDone = async (evt) => {
       currentTerminal.value.openings[0] = opening
     }
 
-    // Intenta imprimir si hay impresora
-    if (printer && totalsNormalized.total_transacted > 0) {
-      try {
-        await printPrecloseReceipt(totalsNormalized)
-        showToast('Pre-cierre realizado e impreso.', 'success')
-      } catch (e) {
-        console.error(e)
-        showToast('Pre-cierre realizado, pero falló la impresión.', 'warning')
-      }
-    } else {
-      showToast('Pre-cierre realizado.', 'success')
-    }
-
+    // Pre-cierre realizado - ya no imprimimos directamente
+    showToast('Pre-cierre realizado correctamente.', 'success')
   }
 
   if (['preclose', 'close', 'open'].includes(evt.action)) {
@@ -389,70 +377,11 @@ const onModalDone = async (evt) => {
   }
 }
 
-// función de impresión del PRE-CIERRE (ejemplo basado en tu printReceipt)
-const printPrecloseReceipt = async (closing) => {
-  // closing puede ser el objeto totalsNormalized o incluir .details (array)
-  const details = closing.details ?? currentTerminal.value?.openings?.[0]?.details ?? []
-
-  const printOncePreclose = () => {
-    printer.addTextAlign(printer.ALIGN_CENTER)
-    printer.addTextStyle(false, false, true, printer.COLOR_1)
-    printer.addText(`${props.fair_name || 'CIFCO'}\n`)
-    printer.addTextStyle(false, false, false, printer.COLOR_1)
-    printer.addText('------ RESUMEN PRE-CIERRE ------\n')
-    const now = new Date()
-    printer.addText(`${now.toLocaleDateString('es-ES')} ${now.toLocaleTimeString('es-ES')}\n`)
-    printer.addText(`ESTACIÓN: ${props.station_name || 'N/A'}\n`)
-    printer.addText(`CAJERO: ${page.props.auth.user.name || 'N/A'}\n`)
-    printer.addText('-----------------------------\n')
-    printer.addText(`EFECTIVO: $${(closing.total_cash ?? 0).toFixed(2)}\n`)
-    printer.addText(`TARJETA: $${(closing.total_card ?? 0).toFixed(2)}\n`)
-    printer.addText(`CHIVO:   $${(closing.total_chivo ?? 0).toFixed(2)}\n`)
-    printer.addText('-----------------------------\n')
-
-    // cabecera detalle
-    if (details.length) {
-      printer.addText("CANT  ARTÍCULO            P.UNIT  SUBTOTAL\n")
-      details.forEach(item => {
-        const qty = String(item.quantity).padEnd(4)
-        const name = (item.product_name || '').trim()
-        const unit = Number(item.unit_price || 0).toFixed(2).padStart(6)
-        const subtotal = Number(item.total || 0).toFixed(2).padStart(8)
-        const max = 18
-        const firstLine = name.slice(0, max).padEnd(max)
-        printer.addText(`${qty} ${firstLine} ${unit} ${subtotal}\n`)
-        // si el nombre es largo, imprime siguientes líneas
-        for (let i = max; i < name.length; i += max) {
-          printer.addText(`     ${name.slice(i, i + max)}\n`)
-        }
-      })
-      printer.addText('-----------------------------\n')
-    }
-
-    printer.addTextStyle(false, false, true, printer.COLOR_1)
-    printer.addText(`TOTAL: $${(closing.total_transacted ?? 0).toFixed(2)}\n`)
-    printer.addTextStyle(false, false, false, printer.COLOR_1)
-    printer.addText('-----------------------------\n')
-    printer.addText('PRE-CIERRE\n')
-    printer.addText('GRACIAS\n')
-    printer.addFeedLine(2)
-    printer.addCut(printer.CUT_FEED)
-  }
-
-  printOncePreclose()
-  printer.send()
-}
-
-
 const props = defineProps({
-    printer_ip: String,
     station_name: String,
     terminal_status: Number,
     fair_name: String,
 })
-
-let epos = null;
-let printer = null;
 
 // Modal Pago
 const showPaymentModal = ref(false)
@@ -472,58 +401,6 @@ const showToast = (message, color = "success") => {
   snackbar.message = message;
   snackbar.color = color;
   snackbar.show = true;
-};
-
-// reimprimir preclose
-const reprintPreclose = async () => {
-  try {
-    // Asegúrate de tener la apertura/resumen.
-    if (!currentTerminal.value?.openings?.[0]) {
-      const found = await fetchTerminalForStation();
-      if (!found) {
-        showToast('No se encontró la apertura/pre-cierre para esta estación.', 'error');
-        return;
-      }
-    }
-
-    if (!printer) {
-      showToast('Impresora no conectada.', 'error');
-      return;
-    }
-
-    // `precloseDetails` computado puede estar vacío si los detalles no vienen del backend.
-    let details = precloseDetails.value;
-
-    // Si está vacío, intenta recuperarlo de sessionStorage como fallback.
-    if ((!details || details.length === 0) && currentTerminal.value?.id) {
-      const storedDetails = sessionStorage.getItem(`precloseDetails_${currentTerminal.value.id}`);
-      if (storedDetails) {
-        try {
-          details = JSON.parse(storedDetails);
-        } catch (e) {
-          console.error("Error al parsear detalles desde sessionStorage:", e);
-          details = []; // Reset in case of invalid JSON
-        }
-      }
-    }
-
-    const dataToPrint = {
-      ...precloseTotals.value,
-      details: details || [], // Asegura que details sea siempre un array
-    };
-
-    // Una última comprobación por si no hay ni totales ni detalles
-    if (dataToPrint.total_transacted <= 0 && dataToPrint.details.length === 0) {
-      showToast('No hay nada para imprimir.', 'warning')
-      return
-    }
-
-    await printPrecloseReceipt(dataToPrint);
-    showToast('Voucher reimpreso correctamente.', 'success');
-  } catch (err) {
-    console.error('Error reimprimiendo pre-cierre:', err);
-    showToast('Ocurrió un error al reimprimir.', 'error');
-  }
 };
 
 // helper: station id (en scope global del componente)
@@ -582,11 +459,16 @@ const executeClearCart = () => {
 
 // confirmar pago: valida, guarda selección local y llama a printReceipt
 const confirmarPago = async () => {
+  // Prevenir múltiples clics
   if (processing.value) return
+
+  // Validar forma de pago
   if (!paymentMethod.value) {
     showToast("Seleccione una forma de pago", "warning");
     return
   }
+
+  // Validar efectivo recibido
   if (paymentMethod.value === 1) {
     if (!efectivoRecibido.value || efectivoRecibido.value < cart.cartTotal) {
       showToast("El efectivo recibido es insuficiente", "error");
@@ -594,110 +476,25 @@ const confirmarPago = async () => {
     }
   }
 
+  // Establecer procesando INMEDIATAMENTE para deshabilitar el botón
+  processing.value = true
+
   const selectedPaymentMethod = Number(paymentMethod.value)
   const selectedEfectivo = efectivoRecibido.value ?? 0
 
-  showPaymentModal.value = false
-  processing.value = true
-
-    try {
-    await printReceipt(selectedPaymentMethod, selectedEfectivo)
+  try {
+    await saveTransaction(selectedPaymentMethod, selectedEfectivo)
+    // Solo cerrar el modal si la transacción fue exitosa
+    showPaymentModal.value = false
+  } catch (error) {
+    // Si hay error, mantener el modal abierto
+    console.error('Error en confirmarPago:', error)
   } finally {
     processing.value = false
   }
 }
 
-const performFullReconnect = () => {
-    if (!props.printer_ip) {
-        showToast("No hay una impresora activa asignada.", "error");
-        return;
-    }
-    if (epos) {
-        epos.disconnect();
-    }
-    printer = null;
-
-    showToast('Reconectando impresora...', 'info');
-
-    epos = new window.epson.ePOSDevice();
-    epos.connect(props.printer_ip, 8008, (connectResult) => {
-        if (connectResult === 'OK') {
-            epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, createResult) => {
-                if (createResult === 'OK') {
-                    printer = printerDevice;
-                    // On successful reconnect, also print the test voucher
-                    try {
-                        printer.addTextAlign(printer.ALIGN_CENTER);
-                        printer.addTextStyle(false, false, true, printer.COLOR_1);
-                        printer.addText('Impresora Reconectada Exitosamente\n');
-                        printer.addTextStyle(false, false, false, printer.COLOR_1);
-                        printer.addFeedLine(1);
-                        printer.addCut(printer.CUT_FEED);
-                        printer.send();
-                        showToast('Impresora reconectada y voucher de prueba enviado.', 'success');
-                    } catch (e) {
-                        console.error('Error al imprimir voucher de prueba post-reconexión:', e);
-                        showToast('Error al enviar voucher de prueba.', 'error');
-                    }
-                } else {
-                    console.error('Error creating printer device after reconnect:', createResult);
-                    showToast(`Error al crear dispositivo: ${createResult}`, 'error');
-                }
-            });
-        } else {
-            console.error('Error reconnecting to printer:', connectResult);
-            showToast('Impresora Hibernando', 'warning');
-        }
-    });
-};
-
-const reconnectPrinter = () => {
-    if (!printer || !epos) {
-        performFullReconnect();
-        return;
-    }
-
-    showToast('Verificando conexión de impresora...', 'info');
-
-    let printFailed = false;
-    const originalOnError = epos.onerror;
-
-    epos.onerror = (err) => {
-        if (!printFailed) { // Prevent multiple calls
-            printFailed = true;
-            console.error('Fallo de impresión detectado, iniciando reconexión completa.', err);
-            epos.onerror = originalOnError;
-            performFullReconnect();
-        }
-    };
-
-    try {
-        printer.addTextAlign(printer.ALIGN_CENTER);
-        printer.addText('-----------------------------\n');
-        printer.addText('Actualmente Conectada\n');
-        printer.addText('-----------------------------\n');
-        printer.addFeedLine(1);
-        printer.addCut(printer.CUT_FEED);
-        printer.send();
-    } catch (e) {
-        if (!printFailed) {
-            printFailed = true;
-            console.error('Fallo de impresión (síncrono), iniciando reconexión completa.', e);
-            epos.onerror = originalOnError;
-            performFullReconnect();
-        }
-        return;
-    }
-
-    setTimeout(() => {
-        epos.onerror = originalOnError;
-        if (!printFailed) {
-            showToast('La impresora ya está conectada.', 'success');
-        }
-    }, 2000); // 2 seconds should be enough to catch a connection error
-};
-
-// Cargar productos + conectar impresora
+// Cargar productos
 onMounted(async () => {
     if (props.terminal_status === 6) {
       showToast(
@@ -712,27 +509,6 @@ onMounted(async () => {
     }
 
     await loadStationProducts();
-
-    if (!props.printer_ip) {
-        showToast("No hay una impresora activa asignada.", "error");
-        return;
-    }
-
-    epos = new window.epson.ePOSDevice();
-    epos.connect(props.printer_ip, 8008, (result) => {
-        if (result !== 'OK') {
-            showToast("No se pudo conectar a la impresora: " + result, "error");
-            return;
-        }
-
-        epos.createDevice('local_printer', epos.DEVICE_TYPE_PRINTER, { crypto: false, buffer: false }, (printerDevice, code) => {
-            if (!printerDevice) {
-                showToast("Error creando dispositivo: " + code, "error");
-                return;
-            }
-            printer = printerDevice;
-        });
-    });
 });
 
 // refrescar cuando cambie el estado de la terminal (ej: a pre-cierre)
@@ -759,149 +535,49 @@ const loadStationProducts = async () => {
     }
 };
 
-const printReceipt = async (paymentMethodValue, efectivoValue) => {
-    if (!printer) {
-        showToast("Impresora no conectada", "error");
-        return;
-    }
-
+const saveTransaction = async (paymentMethodValue, efectivoValue) => {
     if (!cart.cartItems.length) {
         showToast("El carrito está vacío", "warning");
-        return;
+        throw new Error("Carrito vacío");
     }
 
     // obtener y validar stationId
     const stationId = getStationId()
     if (!stationId) {
       showToast('Estación inválida. Contacte al administrador.', 'error')
-      return
+      throw new Error("Estación inválida");
     }
 
     try {
-        // payload para la creación de la transacción (sin logs en producción)
+        // payload para la creación de la transacción
         const payload = {
           cartItems: cart.cartItems,
           total: cart.cartTotal,
           station_id: stationId,
-          employee_id: 103,
-          payment_method: Number(paymentMethodValue)
+          payment_method: Number(paymentMethodValue),
+          cash_amount: Number(efectivoValue),
+          transaction_type_id: 1, // 1 = Venta normal
         }
 
-        const response = await axios.post('/ticket/cajas/transactions/store', {
-          ...payload,
-          transaction_type_id: 1, // 1 = Venta normal
-        });
+        const response = await axios.post('/ticket/cajas/transactions/store', payload);
 
         if (!response.data.success) {
-            showToast("Error al guardar la transacción: " + response.data.message, "error");
-            return;
+            showToast("Error al guardar la transacción: " + (response.data.message || 'Error desconocido'), "error");
+            throw new Error("Error al guardar transacción");
         }
 
-        const transactionId = response.data.transaction_id;
+        // Transacción guardada, el backend creó el PrintJob
+        showToast("Venta registrada. El ticket se imprimirá automáticamente.", "success");
 
-        const cambioLocal = (paymentMethodValue === 1)
-      ? (Number(efectivoValue) - Number(cart.cartTotal)).toFixed(2)
-      : "0.00";
-
-        const printOnce = () => {
-            const sourceWidth = 512;
-            const sourceHeight = 288;
-            const width = 256;
-            const height = 144;
-
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = sourceWidth;
-            tempCanvas.height = sourceHeight;
-            const tempCtx = tempCanvas.getContext('2d');
-            const tempData = tempCtx.createImageData(sourceWidth, sourceHeight);
-
-            for (let y = 0; y < sourceHeight; y++) {
-                for (let x = 0; x < sourceWidth; x++) {
-                    const byteIndex = Math.floor(x / 8) + y * Math.ceil(sourceWidth / 8);
-                    const bit = 7 - (x % 8);
-                    const isBlack = (logoBitmap[byteIndex] >> bit) & 1;
-                    const idx = (y * sourceWidth + x) * 4;
-                    tempData.data[idx] = tempData.data[idx + 1] = tempData.data[idx + 2] = isBlack ? 0 : 255;
-                    tempData.data[idx + 3] = 255;
-                }
-            }
-            tempCtx.putImageData(tempData, 0, 0);
-
-            const canvas = document.createElement('canvas');
-            canvas.width = width;
-            canvas.height = height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(tempCanvas, 0, 0, sourceWidth, sourceHeight, 0, 0, width, height);
-
-            printer.addTextAlign(printer.ALIGN_CENTER);
-            printer.addImage(ctx, 0, 0, width, height, printer.COLOR_1, printer.MODE_MONO);
-            printer.addFeedLine(1);
-
-            printer.addTextStyle(false, false, true, printer.COLOR_1);
-            printer.addText(`${props.fair_name || 'CIFCO'}\n`);
-            printer.addTextStyle(false, false, false, printer.COLOR_1);
-            printer.addText("-----------------------------\n");
-
-            const now = new Date();
-            const fecha = now.toLocaleDateString('es-ES');
-            const hora = now.toLocaleTimeString('es-ES');
-
-            printer.addText(`VENTA N.º ${transactionId}\n`);
-            printer.addText(`${fecha} - ${hora}\n`);
-            printer.addText(`ESTACIÓN: ${props.station_name || 'N/A'}\n`);
-            printer.addText(`CAJERO: ${page.props.auth.user.name || 'N/A'}\n`);
-            printer.addText("-----------------------------\n");
-
-            printer.addText("CANT  ARTÍCULO            P.UNIT  SUBTOTAL\n");
-
-            cart.cartItems.forEach(item => {
-                const qty = item.quantity.toString().padEnd(4);
-                const name = item.product_name.trim();
-                const unit = item.unit_price.toFixed(2).padStart(5);
-                const total = (item.unit_price * item.quantity).toFixed(2).padStart(7);
-                const max = 18;
-                const firstLine = name.slice(0, max).padEnd(max);
-                printer.addText(`${qty} ${firstLine} ${unit} ${total}\n`);
-                for (let i = max; i < name.length; i += max) {
-                    printer.addText(`     ${name.slice(i, i + max)}\n`);
-                }
-            });
-
-            printer.addText("-----------------------------\n");
-            printer.addTextStyle(false, false, true, printer.COLOR_1);
-            printer.addText(`TOTAL: $${cart.cartTotal.toFixed(2)}\n`);
-            printer.addTextStyle(false, false, false, printer.COLOR_1);
-
-            if (paymentMethodValue === 1) {
-              printer.addText(`EFECTIVO: $${Number(efectivoValue).toFixed(2)}\n`);
-              printer.addText(`CAMBIO:   $${cambioLocal}\n`);
-            } else if (paymentMethodValue === 2) {
-              printer.addText("PAGO CON TARJETA\n");
-            } else if (paymentMethodValue === 3) {
-              printer.addText("PAGO CHIVO\n");
-            }
-
-            printer.addText("-----------------------------\n");
-            printer.addText("GRACIAS POR SU PREFERENCIA\n");
-            printer.addFeedLine(1);
-            printer.addBarcode("123456789012", printer.BARCODE_CODE39, printer.HRI_BELOW, printer.FONT_A, 2, 50);
-            printer.addFeedLine(3);
-            printer.addCut(printer.CUT_FEED);
-        };
-
-        printOnce();
-        printOnce();
-        printer.send();
-
+        // Limpiar carrito
         cart.clearCart();
         pedidoCounter.value++;
-
         resetModalPago();
-        showToast('Transacción procesada exitosamente', 'success');
 
     } catch (error) {
         console.error("Error procesando la transacción:", error);
         showToast("Ocurrió un error al procesar la transacción", "error");
+        throw error; // Re-lanzar para que confirmarPago lo capture
     }
 };
 </script>

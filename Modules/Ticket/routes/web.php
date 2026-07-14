@@ -18,6 +18,7 @@ use Modules\Ticket\Http\Controllers\EmployeeController;
 Route::middleware(['auth'])->prefix('ticket')->group(function () {
     // Solo Administrador
     Route::middleware('role:Administrador')->group(function () {
+        Route::patch('/ticket/{ticket}/cancel', [TicketController::class, 'cancel'])->name('ticket.cancel');
         Route::resource('/ticket', TicketController::class)->except(['show']);
         // CRUD completo de locaciones
         Route::resource('/location', LocationController::class)->except(['show']);

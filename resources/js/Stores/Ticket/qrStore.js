@@ -31,11 +31,21 @@ export const useQrStore = defineStore('qrStore', () => {
       form.status = null
 
       // Normalizar y establecer form.status según ticket.status y si está asignado
-      // status mapping: 1 = disponible, 0 = ya canjeado, 3 = no asignado a la estación
-      if (ticket.status === 0) {
-        form.status = 0
-      } else if (ticket.status === 1 && ticket.assigned === false) {
-        form.status = 3
+      // status mapping:
+      // 1 = disponible
+      // 0 = ya canjeado/aplicado
+      // 3 = no asignado a la estación
+      // 4 = ya escaneado en esta estación
+      if (success === false && response.data.already_scanned === true) {
+        form.status = 4 // Ya escaneado en esta estación
+      } else if (ticket.status_id === 1) {
+        form.status = 0 // Ya aplicado
+      } else if (ticket.status_id === 2) {
+        form.status = 0 // Anulado
+      } else if (ticket.status_id === 3 && ticket.assigned === false) {
+        form.status = 3 // No asignado a la estación
+      } else if (ticket.status_id === 3 && ticket.assigned === true) {
+        form.status = 1 // Disponible
       } else {
         form.status = 1
       }
@@ -67,6 +77,11 @@ export const useQrStore = defineStore('qrStore', () => {
       if (error.response) {
         if (error.response.status === 403) {
           toast.error(error.response.data.message)
+        } else if (error.response.status === 409) {
+          // Ticket ya escaneado en esta estación
+          toast.error(error.response.data.message || 'Este ticket ya fue escaneado en esta estación.')
+          form.status = 4 // Cambiar al estado de "ya escaneado"
+          alert.value = error.response.data.message || 'Este ticket ya fue escaneado en esta estación.'
         } else if (error.response.status === 422) {
           // Mostrar errores de validación (si existen) o el mensaje
           const data = error.response.data

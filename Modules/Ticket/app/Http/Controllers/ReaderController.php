@@ -34,6 +34,15 @@ class ReaderController extends Controller
         $message = '';
 
         $ticket = $this->getTicket($uuid);
+
+        if (!$ticket) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ticket no encontrado.',
+                'ticket' => null
+            ]);
+        }
+
         $product_name = Str::upper($ticket->product_name);
         // Determinar si el usuario está asociado a una estación y si el producto
         // está asignado a esa estación.
@@ -43,6 +52,21 @@ class ReaderController extends Controller
         if ($station) {
             $productId = DB::table('v_tickets')->where('uuid', 'like', '%' . $uuid . '%')->value('product_id');
             $stationId = $station->station_id;
+
+            // ✅ Verificar si el ticket YA FUE ESCANEADO en esta estación
+            $alreadyScanned = DB::table('station_tickets')
+                ->where('ticket_id', $ticket->ticket_id)
+                ->where('station_id', $stationId)
+                ->exists();
+
+            if ($alreadyScanned) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "El ticket $ticket->uuid ya fue ESCANEADO en esta estación.",
+                    'ticket' => $ticket,
+                    'already_scanned' => true // Indicador especial
+                ]);
+            }
 
             $hasProduct = DB::table('station_products')
                 ->where('station_id', $stationId)
@@ -55,12 +79,17 @@ class ReaderController extends Controller
             $assigned = false;
         }
 
-        switch ($ticket->status) {
-            case 0:
+        // status_id: 3 = PENDIENTE, 1 = APLICADO, 2 = ANULADO
+        switch ($ticket->status_id) {
+            case 1: // APLICADO
                 $success = false;
-                $message = "El producto $product_name, ya ha sido CANJEADO.";
+                $message = "El producto $product_name, ya ha sido APLICADO.";
                 break;
-            case 1:
+            case 2: // ANULADO
+                $success = false;
+                $message = "El producto $product_name, está ANULADO.";
+                break;
+            case 3: // PENDIENTE
             default:
                 if (! $assigned) {
                     $success = false;
@@ -120,6 +149,19 @@ class ReaderController extends Controller
                 'message' => 'Este producto NO está asignado a la estación donde estás trabajando.'
             ], 403);
         }
+
+        // ✅ Verificar si el ticket YA FUE ESCANEADO en esta estación
+        $alreadyScanned = DB::table('station_tickets')
+            ->where('ticket_id', $request->get('ticket_id'))
+            ->where('station_id', $stationId)
+            ->exists();
+
+        if ($alreadyScanned) {
+            return response()->json([
+                'message' => 'Este ticket ya fue escaneado en esta estación.',
+                'success' => false
+            ], 409); // 409 Conflict
+        }
         // ================================
 
         $dataStore = $this->setDataStore($request, $stationId);
@@ -129,11 +171,16 @@ class ReaderController extends Controller
 
             if ($stationTicketId) {
                 DB::table('tickets')->where('id', $dataStore['ticket_id'])->update([
-                    'status' => 0,
+                    'status_id' => 1, // APLICADO
                     'redeem_date' => $this->getCurrentDate(),
                 ]);
             }
         });
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ticket aplicado correctamente.'
+        ], 200);
     }
 
 
@@ -193,7 +240,17 @@ class ReaderController extends Controller
                 return $query->where('product_id', $product_id);
             })
             ->when($request->get('status'), function ($query, $status) {
-                return $query->where('status', $status);
+                // Mapear estados del filtro frontend a status_id
+                $statusMap = [
+                    'D' => 3, // Disponible -> PENDIENTE
+                    'C' => 1, // Canjeado -> APLICADO
+                    'A' => 2, // Anulado -> ANULADO
+                ];
+                $statusId = $statusMap[$status] ?? null;
+                if ($statusId) {
+                    return $query->where('status_id', $statusId);
+                }
+                return $query;
             })
             ->when($request->get('uuid'), function ($query, $uuid) {
                 return $query->where('uuid', 'like', '%' . $uuid . '%');
@@ -212,7 +269,7 @@ class ReaderController extends Controller
     {
         return DB::table('v_tickets')
             ->where('uuid', 'like', '%' . $uuid . '%')
-            ->select('ticket_id', 'product_name', 'uuid', 'unit_price', 'status')
+            ->select('ticket_id', 'product_name', 'uuid', 'unit_price', 'status_id', 'status')
             ->first();
     }
 

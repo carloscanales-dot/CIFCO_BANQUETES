@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ViewsSeeder::class, // si tuvieras uno específico
             StatusSeeder::class,
+            PrintAgentSeeder::class, // Agente de impresión
 
             \Modules\Caja\Database\Seeders\CajaDatabaseSeeder::class,
             \Modules\Ticket\Database\Seeders\TicketDatabaseSeeder::class,

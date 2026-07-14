@@ -11,7 +11,8 @@ use Modules\Caja\Models\PaymentTerminal;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; // <-- AQUI
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 class PaymentTerminalSessionController extends Controller
 {
@@ -22,6 +23,9 @@ class PaymentTerminalSessionController extends Controller
     {
         $q = $request->input('q');
         $perPage = $request->input('perPage', 10);
+
+        // Debug: verificar el valor recibido
+        \Log::info('Terminal Sessions Index - perPage recibido:', ['perPage' => $perPage, 'tipo' => gettype($perPage)]);
 
         // Feria activa
         $openFair = \Modules\Ticket\Models\Fair::where('status', 2)->first();
@@ -149,6 +153,9 @@ class PaymentTerminalSessionController extends Controller
             'pos_real_amount' => 'required|numeric|min:0',
             'notes'       => 'nullable|string|max:255',
             'user_id'     => 'required|exists:users,id',
+            'cash_difference' => 'nullable|numeric',
+            'pos_difference'  => 'nullable|numeric',
+            'status_text'     => 'nullable|string|max:100',
         ]);
 
         DB::beginTransaction();
@@ -185,6 +192,7 @@ class PaymentTerminalSessionController extends Controller
                 'pos_real_amount'             => $data['pos_real_amount'],
                 'closing_balance'             => $closingBalance,
                 'notes'                       => $data['notes'] ?? '',
+                'status_text'                 => $data['status_text'] ?? null,
             ]);
 
             // Cambiar estado de terminal → cerrada
@@ -376,8 +384,6 @@ class PaymentTerminalSessionController extends Controller
             // Cambiar el estado de la terminal a PRE_CIERRE (7)
             $opening->terminal->update(['status_id' => 7]);
 
-            DB::commit();
-
             // Preparar detalles por producto (opcional, para imprimir)
             $details = \Modules\Caja\Models\TransactionDetail::with('product')
                 ->whereIn('transaction_id', $transactions->pluck('id'))
@@ -392,6 +398,36 @@ class PaymentTerminalSessionController extends Controller
                     ];
                 })
                 ->values();
+
+            // Crear PrintJob para el pre-cierre
+            $station = $opening->terminal->station()->with('printer', 'fair')->first();
+            $printerIp = $station->printer->ip_adress ?? null;
+
+            $printJobPayload = [
+                'printer' => [
+                    'ip' => $printerIp,
+                    'port' => 9100
+                ],
+                'fair_name' => $station->fair->fair_name ?? config('app.name', 'CIFCO'),
+                'station_name' => $station->station_name,
+                'cashier_name' => Auth::user()->name,
+                'total_cash' => $totalCash,
+                'total_card' => $totalCard,
+                'total_chivo' => $totalChivo,
+                'total_transacted' => $totalTransacted,
+                'details' => $details->toArray(),
+            ];
+
+            \Modules\Caja\Models\PrintJob::create([
+                'user_id' => Auth::id(),
+                'station_id' => $station->id,
+                'transaction_id' => null,
+                'type' => 'preclose',
+                'payload' => $printJobPayload,
+                'status' => 'pending',
+            ]);
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,

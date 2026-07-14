@@ -21,9 +21,10 @@ class PaymentTerminalClosing extends Model
         'closing_date',
         'expected_amount',
         'real_amount',
-        'pos_real_amount', 
+        'pos_real_amount',
         'closing_balance',
         'notes',
+        'status_text',
     ];
 
     protected $casts = [

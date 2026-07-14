@@ -48,11 +48,13 @@ return new class extends Migration
                 pr.product_name AS product_name,
                 tc.uuid AS uuid,
                 pr.unit_price AS unit_price,
-                tc.status AS status,
+                tc.status_id AS status_id,
+                st.status AS status,
                 tc.generated_for AS generated_for,
                 tc.created_at AS created_at
             FROM tickets tc
             JOIN products pr ON tc.product_id = pr.id
+            JOIN status st ON tc.status_id = st.id
         ");
     }
 

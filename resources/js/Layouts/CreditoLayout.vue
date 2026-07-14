@@ -17,7 +17,8 @@ import { Link } from '@inertiajs/vue3'
 
       <v-divider />
       <v-list density="compact" nav>
-        <v-list-item prepend-icon="mdi-account-credit-card" title="Creditos Empleados" href="/creditos" :active="$page.url.startsWith('/creditos')"></v-list-item>
+        <v-list-item prepend-icon="mdi-account-credit-card" title="Créditos Empleados" href="/creditos" :active="$page.url.startsWith('/creditos')"></v-list-item>
+        <v-list-item prepend-icon="mdi-account-cash" title="Historial de Empleados" href="/historial-empleados" :active="$page.url.startsWith('/historial-empleados')"></v-list-item>
       </v-list>
     </v-navigation-drawer>
 

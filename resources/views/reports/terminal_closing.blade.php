@@ -234,6 +234,12 @@
             </th>
         </tr>
 
+        <tr style="background-color: {{ $closing->status_text === 'CAJA CUADRADA' ? '#e3f2fd' : ($closing->status_text === 'CAJA CON SOBRANTE' ? '#e8f5e9' : '#ffebee') }};">
+            <th>Estado de la caja</th>
+            <th class="text-right" style="font-size: 11px;">
+                {{ $closing->status_text ?? 'N/A' }}
+            </th>
+        </tr>
 
         @if ($closing->notes)
             <tr>
