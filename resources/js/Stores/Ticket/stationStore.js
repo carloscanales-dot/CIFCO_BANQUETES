@@ -127,6 +127,15 @@ export const useStationStore = defineStore('stationStore', () => {
     })
   }
 
+  // Limpia el estado del formulario y la lista de estaciones.
+  // Necesario al abrir "Nueva feria" para no arrastrar las estaciones
+  // de una feria que se estaba editando antes (store persiste en la SPA).
+  const resetForm = () => {
+    form.reset()
+    stations.value = []
+    errors.value = []
+  }
+
   const destroy = async (id) => {
     isLoading.value = true
     try {
@@ -158,5 +167,6 @@ export const useStationStore = defineStore('stationStore', () => {
     ajaxStore,
     update,
     destroy,
+    resetForm,
   }
 })

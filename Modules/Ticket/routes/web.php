@@ -28,7 +28,10 @@ Route::middleware(['auth'])->prefix('ticket')->group(function () {
     });
     // Administrador o Empleado
     Route::middleware('role:Administrador|Empleado|Cajero')->group(function () {
+        Route::post('/fair/clone', [FairController::class, 'clone'])->name('fair.clone');
+        Route::get('/fair/list/{status}', [FairController::class, 'list'])->name('fair.list');
         Route::resource('/fair', FairController::class)->except(['show']);
+        Route::patch('/fair/{fair}/status', [FairController::class, 'changeStatus'])->name('fair.status');
         Route::resource('/station', StationController::class)->except(['show']);
         Route::resource('/product', ProductController::class)->except(['show']);
         Route::get('/product/all', [ProductController::class, 'all'])->name('product.all');

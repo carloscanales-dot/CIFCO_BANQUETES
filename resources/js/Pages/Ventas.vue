@@ -1,8 +1,19 @@
 <template>
     <Head title="Ventas" />
     <CajaLayout>
+    <!-- Estado: FERIA CERRADA / NO ABIERTA (cierre real) -->
+    <div v-if="fairClosed">
+      <v-card color="error" border="start" elevation="2">
+        <v-card-title class="text-h5 font-weight-bold">FERIA FINALIZADA</v-card-title>
+        <v-card-text class="text-subtitle-1">
+          La feria <strong>{{ props.fair_name }}</strong> no está abierta. Es un evento finalizado,
+          por lo que no se pueden registrar ventas en esta estación.
+        </v-card-text>
+      </v-card>
+    </div>
+
     <!-- Estado: CERRADA -->
-    <div v-if="props.terminal_status === 6">
+    <div v-else-if="props.terminal_status === 6">
       <v-card color="error" border="start" elevation="2">
         <v-card-title class="text-h5 font-weight-bold">CAJA CERRADA</v-card-title>
         <v-card-text class="text-subtitle-1">
@@ -161,6 +172,8 @@
 
         <v-radio :value="2" label="Tarjeta"></v-radio>
 
+        <v-radio :value="4" label="Mixto (efectivo + tarjeta)"></v-radio>
+
         <v-radio :value="3" label="Chivo Wallet" disabled></v-radio>
 
       </v-radio-group>
@@ -175,6 +188,34 @@
         <div class="mt-2 d-flex justify-space-between font-weight-bold">
           <span>Cambio:</span>
           <span>${{ cambio }}</span>
+        </div>
+      </div>
+
+      <!-- Pago mixto: monto en tarjeta + efectivo recibido -->
+      <div v-if="paymentMethod === 4" class="mt-4">
+        <div class="mb-2 d-flex justify-space-between font-weight-bold">
+          <span>Total a pagar:</span>
+          <span>${{ cart.cartTotal.toFixed(2) }}</span>
+        </div>
+        <v-text-field
+          label="Monto en tarjeta"
+          type="number"
+          prefix="$"
+          v-model.number="montoTarjeta"
+        />
+        <div class="mb-2 d-flex justify-space-between">
+          <span>Corresponde en efectivo:</span>
+          <span>${{ montoEfectivo.toFixed(2) }}</span>
+        </div>
+        <v-text-field
+          label="Efectivo recibido"
+          type="number"
+          prefix="$"
+          v-model.number="efectivoRecibido"
+        />
+        <div class="mt-2 d-flex justify-space-between font-weight-bold">
+          <span>Cambio:</span>
+          <span>${{ cambioMixto }}</span>
         </div>
       </div>
     </v-card-text>
@@ -381,13 +422,19 @@ const props = defineProps({
     station_name: String,
     terminal_status: Number,
     fair_name: String,
+    fair_status: Number,
 })
+
+// La feria solo permite ventas si está ABIERTA (status = 2).
+// fair_status null (sin estación asignada) no bloquea aquí; ese caso se maneja aparte.
+const fairClosed = computed(() => props.fair_status != null && props.fair_status !== 2)
 
 // Modal Pago
 const showPaymentModal = ref(false)
 const showClearCartDialog = ref(false)
-const paymentMethod = ref(null)   // 1=Efectivo, 2=Tarjeta, 3=Chivo
+const paymentMethod = ref(null)   // 1=Efectivo, 2=Tarjeta, 3=Chivo, 4=Mixto
 const efectivoRecibido = ref(null)
+const montoTarjeta = ref(null)    // parte en tarjeta (pago mixto)
 const processing = ref(false)
 
 const snackbar = reactive({
@@ -429,6 +476,18 @@ const cambio = computed(() => {
     return "0.00"
 })
 
+// Pago mixto: la parte en efectivo es el total menos lo que va en tarjeta.
+const montoEfectivo = computed(() => {
+    const card = Number(montoTarjeta.value) || 0
+    return Math.max(0, cart.cartTotal - card)
+})
+
+// Cambio del pago mixto: efectivo recibido menos la parte en efectivo.
+const cambioMixto = computed(() => {
+    const recibido = Number(efectivoRecibido.value) || 0
+    return (recibido - montoEfectivo.value).toFixed(2)
+})
+
 const abrirModalPago = () => {
     showPaymentModal.value = true
 }
@@ -436,6 +495,7 @@ const abrirModalPago = () => {
 const resetModalPago = () => {
     paymentMethod.value = null
     efectivoRecibido.value = null
+    montoTarjeta.value = null
 }
 
 const cancelarPago = () => {
@@ -472,6 +532,19 @@ const confirmarPago = async () => {
   if (paymentMethod.value === 1) {
     if (!efectivoRecibido.value || efectivoRecibido.value < cart.cartTotal) {
       showToast("El efectivo recibido es insuficiente", "error");
+      return
+    }
+  }
+
+  // Validar pago mixto
+  if (paymentMethod.value === 4) {
+    const card = Number(montoTarjeta.value) || 0
+    if (card < 0 || card > cart.cartTotal) {
+      showToast("El monto en tarjeta debe estar entre 0 y el total.", "error");
+      return
+    }
+    if ((Number(efectivoRecibido.value) || 0) < montoEfectivo.value) {
+      showToast("El efectivo recibido es insuficiente para la parte en efectivo.", "error");
       return
     }
   }
@@ -536,6 +609,11 @@ const loadStationProducts = async () => {
 };
 
 const saveTransaction = async (paymentMethodValue, efectivoValue) => {
+    if (fairClosed.value) {
+        showToast("La feria está cerrada. No se pueden registrar ventas.", "error");
+        throw new Error("Feria cerrada");
+    }
+
     if (!cart.cartItems.length) {
         showToast("El carrito está vacío", "warning");
         throw new Error("Carrito vacío");
@@ -557,6 +635,12 @@ const saveTransaction = async (paymentMethodValue, efectivoValue) => {
           payment_method: Number(paymentMethodValue),
           cash_amount: Number(efectivoValue),
           transaction_type_id: 1, // 1 = Venta normal
+        }
+
+        // Pago mixto: enviar el desglose efectivo/tarjeta.
+        if (Number(paymentMethodValue) === 4) {
+          payload.amount_card = Number(montoTarjeta.value) || 0
+          payload.amount_cash = montoEfectivo.value
         }
 
         const response = await axios.post('/ticket/cajas/transactions/store', payload);

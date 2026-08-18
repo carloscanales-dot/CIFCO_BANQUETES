@@ -183,7 +183,7 @@ onMounted(() => {
   locationStore.loadAll()
   page.props.fair
     ? (Object.assign(fairForm.value, page.props.fair), stationStore.load(fairForm.value.id))
-    : fairStore.resetForm()
+    : (fairStore.resetForm(), stationStore.resetForm())
 })
 </script>
 

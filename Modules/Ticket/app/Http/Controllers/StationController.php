@@ -52,8 +52,14 @@ class StationController extends Controller
             return response()->json($result);
         }
 
+        $fairs = \Modules\Ticket\Models\Fair::query()
+            ->orderByDesc('start_date')
+            ->get(['id', 'fair_name', 'start_date', 'end_date', 'status']);
+
         return Inertia::render('Ticket/Station/Index', [
-            'result' => $result
+            'result'         => $result,
+            'fairs'          => $fairs,
+            'selectedFairId' => \Modules\Ticket\Models\Fair::defaultDashboardId(),
         ]);
     }
 
@@ -185,10 +191,10 @@ class StationController extends Controller
     }
 
     /**
-     * @param type $field
-     * @return type
+     * @param string $field
+     * @return array|null
      */
-    protected function setField($field): array
+    protected function setField(string $field): ?array
     {
         $fieldList = [
             'station_name' => [
@@ -197,6 +203,10 @@ class StationController extends Controller
             ],
             'status' => [
                 'field' => 'status',
+                'operator' => 'equal'
+            ],
+            'fair_id' => [
+                'field' => 'fair_id',
                 'operator' => 'equal'
             ]
         ];

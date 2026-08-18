@@ -46,11 +46,11 @@ class ReporteEmpleadoController extends Controller
 
         // Aplicar filtros
         if ($request->filled('fecha_inicio')) {
-            $query->whereDate('t.transaction_date', '>=', $request->fecha_inicio);
+            $query->where('t.jornada', '>=', $request->fecha_inicio);
         }
 
         if ($request->filled('fecha_fin')) {
-            $query->whereDate('t.transaction_date', '<=', $request->fecha_fin);
+            $query->where('t.jornada', '<=', $request->fecha_fin);
         }
 
         if ($request->filled('station_id')) {
@@ -119,11 +119,11 @@ class ReporteEmpleadoController extends Controller
 
         // Aplicar filtros
         if ($request->filled('fecha_inicio')) {
-            $query->whereDate('t.transaction_date', '>=', $request->fecha_inicio);
+            $query->where('t.jornada', '>=', $request->fecha_inicio);
         }
 
         if ($request->filled('fecha_fin')) {
-            $query->whereDate('t.transaction_date', '<=', $request->fecha_fin);
+            $query->where('t.jornada', '<=', $request->fecha_fin);
         }
 
         if ($request->filled('station_id')) {

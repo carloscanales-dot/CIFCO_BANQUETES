@@ -6,10 +6,16 @@ import EmployeeSalesTab from '@/Pages/Analytics/Tabs/EmployeeSalesTab.vue'
 import TicketsTab from '@/Pages/Analytics/Tabs/TicketsTab.vue'
 
 import { Head } from '@inertiajs/vue3'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import axios from 'axios'
 
+const props = defineProps({
+  fairs: { type: Array, default: () => [] },
+  selectedFairId: { type: [Number, String], default: null },
+})
+
 const chartData = ref({
+  fair: null,
   sales: { byPaymentMethod: [], byProduct: [], byDate: [], byStation: [] },
   employeeSales: { byProduct: [], byDate: [], total: 0 },
   tickets: { byProduct: [], byDate: [], byStation: [], total: 0 }
@@ -17,6 +23,20 @@ const chartData = ref({
 const isLoading = ref(false)
 const lastUpdate = ref(null)
 let refreshInterval = null
+
+// Feria seleccionada en el dashboard
+const currentFairId = ref(props.selectedFairId)
+
+// Etiquetas de estado de feria
+const statusText = { 1: 'Programada', 2: 'Abierta', 3: 'Cerrada' }
+
+// Opciones del selector (nombre + estado)
+const fairOptions = computed(() =>
+  (props.fairs || []).map((f) => ({
+    ...f,
+    label: `${f.fair_name} · ${statusText[f.status] || ''}`,
+  }))
+)
 
 // Tab activo
 const tab = ref('sales')
@@ -35,10 +55,12 @@ const fetchData = async (showLoading = true) => {
   }
 
   try {
-    const { data } = await axios.get('/dashboard/charts')
+    const params = currentFairId.value ? { fair_id: currentFairId.value } : {}
+    const { data } = await axios.get('/dashboard/charts', { params })
 
     // Actualizar solo los valores sin reemplazar el objeto completo
     // Esto evita re-renders innecesarios
+    chartData.value.fair = data.fair
     Object.assign(chartData.value.sales, data.sales)
     Object.assign(chartData.value.employeeSales, data.employeeSales)
     Object.assign(chartData.value.tickets, data.tickets)
@@ -55,6 +77,11 @@ const fetchData = async (showLoading = true) => {
 
 // Recargar datos manualmente (con loading visible)
 const refreshData = () => {
+  fetchData(true)
+}
+
+// Al cambiar de feria: recarga inmediata con loading visible
+const onFairChange = () => {
   fetchData(true)
 }
 
@@ -87,6 +114,18 @@ onUnmounted(() => {
         <Breadcrumbs :items="breadcrumbs" class="pa-0 mt-1" />
       </div>
       <div class="d-flex align-center gap-2">
+        <VAutocomplete
+          v-model="currentFairId"
+          :items="fairOptions"
+          item-title="label"
+          item-value="id"
+          label="Feria"
+          density="compact"
+          variant="outlined"
+          hide-details
+          style="min-width: 240px;"
+          @update:model-value="onFairChange"
+        />
         <VChip v-if="lastUpdate" size="small" :color="isLoading ? 'warning' : 'success'" variant="tonal">
           <VIcon start :icon="isLoading ? 'mdi-loading mdi-spin' : 'mdi-check-circle'"></VIcon>
           {{ lastUpdate.toLocaleTimeString() }}

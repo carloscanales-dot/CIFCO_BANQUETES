@@ -6,10 +6,27 @@ import { useToast } from 'vue-toastification'
 
 const props = defineProps({
     printers: Array,
-    stations: Array
+    stations: Array,
+    fairs: { type: Array, default: () => [] },
+    selectedFairId: { type: [Number, String], default: null },
 })
 
 const toast = useToast()
+
+// Selector de feria: al cambiar, recarga la vista filtrada por esa feria.
+const currentFairId = ref(props.selectedFairId)
+const statusText = { 1: 'Programada', 2: 'Abierta', 3: 'Cerrada' }
+const fairOptions = ref((props.fairs || []).map((f) => ({
+    ...f,
+    label: `${f.fair_name} · ${statusText[f.status] || ''}`,
+})))
+
+function onFairChange() {
+    router.get('/admin/printers', { fair_id: currentFairId.value }, {
+        preserveState: true,
+        preserveScroll: true,
+    })
+}
 
 const modal = ref(false)
 const isEdit = ref(false)
@@ -121,12 +138,15 @@ function toggleStatus(printer) {
             <v-card flat class="pa-4 elevation-1" style="background-color: white;">
                 <!-- Título + botón -->
                 <v-row class="align-center justify-space-between mb-2">
-                    <v-col cols="12" sm="6">
+                    <v-col cols="12" sm="4">
                         <v-card-title class="text-h6 font-weight-bold text-left pa-0">
                             Impresoras
                         </v-card-title>
                     </v-col>
-                    <v-col cols="12" sm="6" class="d-flex justify-end">
+                    <v-col cols="12" sm="8" class="d-flex justify-end align-center ga-2">
+                        <v-autocomplete v-model="currentFairId" :items="fairOptions" item-title="label" item-value="id"
+                            label="Feria" density="compact" variant="outlined" hide-details style="max-width: 260px;"
+                            @update:model-value="onFairChange" />
                         <v-btn color="black" variant="elevated" class="add-printer-btn" @click="openModal()">
                             <v-icon left>mdi-plus</v-icon>
                             Agregar Impresora
@@ -173,9 +193,10 @@ function toggleStatus(printer) {
                                 density="comfortable" :error-messages="form.errors.printer_name" required
                                 class="mb-3" />
 
-                            <v-select v-model="form.station_id" :items="props.stations" item-title="station_name"
-                                item-value="id" label="Estación" variant="outlined" color="black" density="comfortable"
-                                :error-messages="form.errors.station_id" required class="mb-3" />
+                            <v-autocomplete v-model="form.station_id" :items="props.stations" item-title="label"
+                                item-value="id" label="Estación (feria abierta)" variant="outlined" color="black"
+                                density="comfortable" :error-messages="form.errors.station_id" required class="mb-3"
+                                auto-select-first no-data-text="No hay stands de ferias abiertas" />
 
                             <v-text-field v-model="form.ip_adress" label="Dirección IP" variant="outlined" color="black"
                                 density="comfortable" :error-messages="form.errors.ip_adress" class="mb-3" />

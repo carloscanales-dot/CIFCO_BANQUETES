@@ -24,7 +24,8 @@ class TicketRequest extends FormRequest
             'product_id' => 'required',
             'quantity' => 'required|numeric|gt:0',
             'generated_for' => 'nullable|string|max:255',
-            'status_id' => 'required|exists:status,id'
+            'status_id' => 'required|exists:status,id',
+            'fair_id' => 'required|exists:fairs,id',
         ];
     }
 
@@ -37,7 +38,9 @@ class TicketRequest extends FormRequest
             'product_id.required' => 'El campo :attribute es obligatorio.',
             'quantity.required' => 'El campo :attribute es obligatorio.',
             'status_id.required' => 'El campo :attribute es obligatorio.',
-            'status_id.exists' => 'El estado seleccionado no es válido.'
+            'status_id.exists' => 'El estado seleccionado no es válido.',
+            'fair_id.required' => 'Debes seleccionar la feria para la que se generan las cortesías.',
+            'fair_id.exists' => 'La feria seleccionada no es válida.'
         ];
     }
 }

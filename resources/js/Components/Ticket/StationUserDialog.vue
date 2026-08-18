@@ -9,7 +9,7 @@
 
       <VCardText>
         <VForm ref="form" v-model="valid">
-          <VSelect
+          <VAutocomplete
             v-model="selectedUsers"
             :items="users"
             item-title="name"
@@ -17,7 +17,9 @@
             label="Selecciona usuarios"
             multiple
             chips
+            closable-chips
             clearable
+            no-data-text="Sin coincidencias"
           />
         </VForm>
       </VCardText>

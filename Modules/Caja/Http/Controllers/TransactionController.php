@@ -26,7 +26,11 @@ class TransactionController extends Controller
             abort(403, 'Usuario no autenticado');
         }
 
-        $stationIds = $user->stations()->pluck('station_id');
+        // Historial de los stands del cajero en feria ABIERTA (evita mezclar la
+        // feria anterior cuando quedó asignado a ambas, p. ej. tras clonar).
+        // Si no tiene stands en feria abierta (feria recién cerrada), cae a todos
+        // sus stands para no perder la reimpresión/conciliación.
+        $stationIds = $this->historyStationIds($user);
 
         // Eager load relations and also select the transaction type name via JOIN
         // SOLO TRANSACCIONES TIPO VENTA (transaction_type_id = 1)
@@ -53,7 +57,8 @@ class TransactionController extends Controller
             abort(403, 'Usuario no autenticado');
         }
 
-        $stationIds = $user->stations()->pluck('station_id');
+        // Stands del cajero en feria abierta, con fallback (ver nota en index()).
+        $stationIds = $this->historyStationIds($user);
 
         // Eager load relations and also select the transaction type name via JOIN
         // SOLO TRANSACCIONES TIPO VENTA EMPLEADO (transaction_type_id = 2)
@@ -69,6 +74,22 @@ class TransactionController extends Controller
         return Inertia::render('Caja/HistorialEmpleados', [
             'transactions' => $transactions,
         ]);
+    }
+
+    /**
+     * IDs de stands para el historial del cajero: los de feria ABIERTA (status 2)
+     * y, si no tiene ninguno abierto (feria recién cerrada), todos sus stands
+     * para conservar reimpresión/conciliación.
+     */
+    private function historyStationIds($user)
+    {
+        $openStationIds = $user->stations()
+            ->whereHas('fair', fn($q) => $q->where('status', \Modules\Ticket\Models\Fair::STATUS_OPEN))
+            ->pluck('stations.id');
+
+        return $openStationIds->isNotEmpty()
+            ? $openStationIds
+            : $user->stations()->pluck('stations.id');
     }
 
     public function refund(Transaction $transaction)
@@ -103,9 +124,81 @@ class TransactionController extends Controller
             return response()->json(['success' => false, 'message' => 'Estación inválida'], 422);
         }
 
+        // Cierre real: una feria que no esté ABIERTA (status = 2) es un evento
+        // finalizado/programado y no admite ventas nuevas.
+        if (! $station->fair || (int) $station->fair->status !== \Modules\Ticket\Models\Fair::STATUS_OPEN) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La feria de esta estación no está abierta. No se pueden registrar ventas.'
+            ], 422);
+        }
+
         // Validar payment method: si no viene, asignar un default razonable (por ejemplo 1 = Efectivo)
         if (! $payment_method) {
             $payment_method = 1;
+        }
+
+        // ============================================================
+        // Blindaje de precios: el backend es la fuente de la verdad.
+        // Se ignoran unit_price / total / product_name que envía el cliente;
+        // se recalculan desde la tabla products usando solo product_id + quantity.
+        // ============================================================
+        if (empty($cartItems) || ! is_array($cartItems)) {
+            return response()->json(['success' => false, 'message' => 'El carrito está vacío.'], 422);
+        }
+
+        $productIds   = collect($cartItems)->pluck('product_id')->filter()->unique()->values();
+        $productsById = DB::table('products')->whereIn('id', $productIds)->get()->keyBy('id');
+
+        $serverItems = [];
+        $serverTotal = 0;
+        foreach ($cartItems as $item) {
+            $pid = (int) ($item['product_id'] ?? 0);
+            $qty = (int) ($item['quantity'] ?? 0);
+            $product = $productsById->get($pid);
+
+            if (! $product) {
+                return response()->json(['success' => false, 'message' => 'Producto inválido en el carrito.'], 422);
+            }
+            if ($qty < 1) {
+                return response()->json(['success' => false, 'message' => 'Cantidad inválida en el carrito.'], 422);
+            }
+
+            $unitPrice  = (float) $product->unit_price;
+            $lineTotal  = round($unitPrice * $qty, 2);
+            $serverTotal += $lineTotal;
+
+            $serverItems[] = [
+                'product_id'   => $pid,
+                'product_name' => $product->product_name,
+                'quantity'     => $qty,
+                'unit_price'   => $unitPrice,
+                'total'        => $lineTotal,
+            ];
+        }
+
+        // El total real lo define el servidor, no el cliente.
+        $total = round($serverTotal, 2);
+
+        // Pago mixto (método 4): validar el desglose efectivo + tarjeta = total.
+        $amountCash = null;
+        $amountCard = null;
+        if ($payment_method === 4) {
+            $amountCash = round((float) $request->input('amount_cash', 0), 2);
+            $amountCard = round((float) $request->input('amount_card', 0), 2);
+
+            if ($amountCash < 0 || $amountCard < 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Los montos del pago mixto no pueden ser negativos.'
+                ], 422);
+            }
+            if (abs(($amountCash + $amountCard) - $total) > 0.01) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'En pago mixto, efectivo + tarjeta debe ser igual al total.'
+                ], 422);
+            }
         }
 
         // Buscar la última apertura de terminal del usuario autenticado
@@ -142,6 +235,8 @@ class TransactionController extends Controller
                 'user_id' => Auth::id(),
                 'station_id' => $station_id,
                 'amount' => $total,
+                'amount_cash' => $amountCash,
+                'amount_card' => $amountCard,
                 'transaction_date' => now(),
                 'transaction_type_id' => $transaction_type_id, // 1 = venta normal
                 'status_id' => 1,
@@ -181,12 +276,14 @@ class TransactionController extends Controller
                 'person_name' => $personName, // Cajero o Empleado
                 'payment_method' => $payment_method,
                 'cash_amount' => $request->input('cash_amount', $total),
+                'amount_cash' => $amountCash, // parte en efectivo (pago mixto)
+                'amount_card' => $amountCard, // parte en tarjeta (pago mixto)
                 'total' => $total,
                 'items' => []
             ];
 
-            // Insertar los detalles de cada producto
-            foreach ($cartItems as $item) {
+            // Insertar los detalles de cada producto (valores recalculados en el servidor)
+            foreach ($serverItems as $item) {
                 $printJobPayload['items'][] = [
                     'product_name' => $item['product_name'],
                     'quantity' => $item['quantity'],
@@ -198,7 +295,7 @@ class TransactionController extends Controller
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'unit_price' => $item['unit_price'],
-                    'total' => $item['unit_price'] * $item['quantity'],
+                    'total' => $item['total'],
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
@@ -249,9 +346,10 @@ class TransactionController extends Controller
                 ], 404);
             }
 
-            // Verificar que el usuario actual tenga permiso (es dueño de la transacción o admin)
-            if ($transaction->user_id !== Auth::id()) {
-                // Aquí podrías agregar una validación adicional para administradores si lo necesitas
+            // Permiso: el dueño de la transacción o un Administrador.
+            /** @var \App\Models\User $authUser */
+            $authUser = Auth::user();
+            if ($transaction->user_id !== Auth::id() && ! $authUser->hasRole('Administrador')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No tienes permiso para reimprimir esta transacción'
@@ -285,7 +383,13 @@ class TransactionController extends Controller
                 'cashier_name' => $transaction->user->name,
                 'person_name' => $personName,
                 'payment_method' => $transaction->payment_method_id,
-                'cash_amount' => $transaction->amount, // Para reimpresión usamos el monto de la transacción
+                // Para mixto, el "efectivo recibido" del ticket es la parte en efectivo
+                // (no guardamos el recibido original), así el cambio sale en 0 en la copia.
+                'cash_amount' => $transaction->payment_method_id == 4
+                    ? $transaction->amount_cash
+                    : $transaction->amount,
+                'amount_cash' => $transaction->amount_cash, // desglose pago mixto
+                'amount_card' => $transaction->amount_card,
                 'total' => $transaction->amount,
                 'reimpreso' => true, // Indica que es una reimpresión
                 'items' => []

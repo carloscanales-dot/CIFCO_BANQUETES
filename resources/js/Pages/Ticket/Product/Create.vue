@@ -1,7 +1,7 @@
 <template>
 
   <Head title="Producto" />
-  <AuthenticatedLayout>
+  <AdminLayout>
 
     <!-- TÍTULO + BREADCRUMBS -->
     <div class="mb-4">
@@ -75,14 +75,14 @@
       </VForm>
     </VCard>
 
-  </AuthenticatedLayout>
+  </AdminLayout>
 </template>
 
 <script setup>
 import { reactive, onMounted } from 'vue'
 import { Head, Link } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
+import AdminLayout from '@/Layouts/AdminLayout.vue'
 import { useProductStore } from '@/Stores/Ticket/productStore'
 import { storeToRefs } from 'pinia'
 

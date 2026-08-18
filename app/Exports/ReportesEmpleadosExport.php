@@ -66,11 +66,11 @@ class TransaccionesEmpleadosSheet implements FromCollection, WithHeadings, WithM
 
         // Aplicar filtros
         if (!empty($this->filters['fecha_inicio'])) {
-            $query->whereDate('t.transaction_date', '>=', $this->filters['fecha_inicio']);
+            $query->where('t.jornada', '>=', $this->filters['fecha_inicio']);
         }
 
         if (!empty($this->filters['fecha_fin'])) {
-            $query->whereDate('t.transaction_date', '<=', $this->filters['fecha_fin']);
+            $query->where('t.jornada', '<=', $this->filters['fecha_fin']);
         }
 
         if (!empty($this->filters['station_id'])) {
@@ -147,11 +147,11 @@ class DetalleProductosEmpleadosSheet implements FromCollection, WithHeadings, Wi
             ->where('t.transaction_type_id', 2);
 
         if (!empty($this->filters['fecha_inicio'])) {
-            $query->whereDate('t.transaction_date', '>=', $this->filters['fecha_inicio']);
+            $query->where('t.jornada', '>=', $this->filters['fecha_inicio']);
         }
 
         if (!empty($this->filters['fecha_fin'])) {
-            $query->whereDate('t.transaction_date', '<=', $this->filters['fecha_fin']);
+            $query->where('t.jornada', '<=', $this->filters['fecha_fin']);
         }
 
         if (!empty($this->filters['station_id'])) {
@@ -246,11 +246,11 @@ class EstadisticasEmpleadosSheet implements FromCollection, WithTitle
             ->where('t.transaction_type_id', 2);
 
         if (!empty($this->filters['fecha_inicio'])) {
-            $query->whereDate('t.transaction_date', '>=', $this->filters['fecha_inicio']);
+            $query->where('t.jornada', '>=', $this->filters['fecha_inicio']);
         }
 
         if (!empty($this->filters['fecha_fin'])) {
-            $query->whereDate('t.transaction_date', '<=', $this->filters['fecha_fin']);
+            $query->where('t.jornada', '<=', $this->filters['fecha_fin']);
         }
 
         if (!empty($this->filters['station_id'])) {

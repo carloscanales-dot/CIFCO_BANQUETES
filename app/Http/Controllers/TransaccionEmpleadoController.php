@@ -53,7 +53,7 @@ class TransaccionEmpleadoController extends Controller
         }
 
         if ($request->filled('date')) {
-            $query->whereDate('t.transaction_date', $request->date);
+            $query->where('t.jornada', $request->date);
         }
 
         $transactions = $query->orderBy('t.transaction_date', 'desc')

@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\Printer;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use Modules\Caja\Models\PaymentTerminal;
+use Modules\Ticket\Models\Fair;
 
 class DashboardController extends Controller
 {
@@ -19,7 +21,15 @@ class DashboardController extends Controller
     // Renderiza la vista principal del dashboard
     public function index()
     {
-        return Inertia::render('Dashboard');
+        $fairs = DB::table('fairs')
+            ->select('id', 'fair_name', 'start_date', 'end_date', 'status')
+            ->orderByDesc('start_date')
+            ->get();
+
+        return Inertia::render('Dashboard', [
+            'fairs'          => $fairs,
+            'selectedFairId' => Fair::defaultDashboardId(),
+        ]);
     }
 
     public function landing()
@@ -32,18 +42,26 @@ class DashboardController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        // buscar la terminal de pago asignada al usuario
-        $paymentTerminal = PaymentTerminal::where('user_id', $user->id)->first();
+        // Obtener la estación asignada. Si el cajero tiene stands en varias ferias,
+        // se prefiere el de una feria ABIERTA (status = 2); si no, el primero.
+        $station = $user->stations()->whereHas('fair', fn($q) => $q->where('status', 2))->first()
+            ?? $user->stations()->first();
 
-        // Obtener la estación asignada (la primera, por si tuviera más de una)
-        $station = $user->stations()->first();
+        // Terminal de pago EN el stand resuelto (evita tomar la de otra feria tras
+        // clonar). Se prefiere la del cajero; si no, cualquiera del stand.
+        $paymentTerminal = $station
+            ? (PaymentTerminal::where('station_id', $station->id)->where('user_id', $user->id)->first()
+                ?? PaymentTerminal::where('station_id', $station->id)->first())
+            : PaymentTerminal::where('user_id', $user->id)->first();
 
         // Si el usuario no tiene estación → no hay impresora
         if (!$station) {
             return Inertia::render('Ventas', [
                 'printer_ip' => null,
+                'station_id' => null,
                 'station_name' => null,
                 'fair_name' => null, // <- nada que mostrar
+                'fair_status' => null,
                 'terminal_status' => $paymentTerminal?->status_id,
                 'payment_terminal_id' => $paymentTerminal?->id,
             ]);
@@ -59,8 +77,10 @@ class DashboardController extends Controller
 
         return Inertia::render('Ventas', [
             'printer_ip' => $printer?->ip_adress ?? null,
+            'station_id' => $station->id, // stand resuelto (feria abierta)
             'station_name' => $station->station_name,
             'fair_name' => $fairName,
+            'fair_status' => $station->fair?->status !== null ? (int) $station->fair->status : null,
             'terminal_status' => $paymentTerminal?->status_id,
             'payment_terminal_id' => $paymentTerminal?->id,
         ]);
@@ -71,18 +91,26 @@ class DashboardController extends Controller
         /** @var \App\Models\User $user */
         $user = Auth::user();
 
-        // buscar la terminal de pago asignada al usuario
-        $paymentTerminal = PaymentTerminal::where('user_id', $user->id)->first();
+        // Obtener la estación asignada. Si el cajero tiene stands en varias ferias,
+        // se prefiere el de una feria ABIERTA (status = 2); si no, el primero.
+        $station = $user->stations()->whereHas('fair', fn($q) => $q->where('status', 2))->first()
+            ?? $user->stations()->first();
 
-        // Obtener la estación asignada (la primera, por si tuviera más de una)
-        $station = $user->stations()->first();
+        // Terminal de pago EN el stand resuelto (evita tomar la de otra feria tras
+        // clonar). Se prefiere la del cajero; si no, cualquiera del stand.
+        $paymentTerminal = $station
+            ? (PaymentTerminal::where('station_id', $station->id)->where('user_id', $user->id)->first()
+                ?? PaymentTerminal::where('station_id', $station->id)->first())
+            : PaymentTerminal::where('user_id', $user->id)->first();
 
         // Si el usuario no tiene estación → no hay impresora
         if (!$station) {
             return Inertia::render('Creditos', [
                 'printer_ip' => null,
+                'station_id' => null,
                 'station_name' => null,
                 'fair_name' => null,
+                'fair_status' => null,
                 'terminal_status' => $paymentTerminal?->status_id,
                 'payment_terminal_id' => $paymentTerminal?->id,
             ]);
@@ -97,8 +125,10 @@ class DashboardController extends Controller
 
         return Inertia::render('Creditos', [
             'printer_ip' => $printer?->ip_adress ?? null,
+            'station_id' => $station->id, // stand resuelto (feria abierta)
             'station_name' => $station->station_name,
             'fair_name' => $fairName,
+            'fair_status' => $station->fair?->status !== null ? (int) $station->fair->status : null,
             'terminal_status' => $paymentTerminal?->status_id,
             'payment_terminal_id' => $paymentTerminal?->id,
         ]);
@@ -110,32 +140,56 @@ class DashboardController extends Controller
     }
 
     // Devuelve los datos para las gráficas
-    public function charts()
+    public function charts(Request $request)
     {
+        // Feria seleccionada (o la de por defecto si no viene en la petición).
+        $fairId = $request->integer('fair_id') ?: Fair::defaultDashboardId();
+
+        // Sin feria disponible → estructura vacía (evita mezclar datos globales).
+        if (! $fairId) {
+            return response()->json($this->emptyChartPayload());
+        }
+
+        $fair = DB::table('fairs')
+            ->select('id', 'fair_name', 'start_date', 'end_date', 'status')
+            ->find($fairId);
+
         // ====== VENTAS A CLIENTES (transaction_type_id = 1) ======
         // Total ventas a clientes
         $clientSalesTotal = DB::table('transactions')
-            ->where('status_id', 1)
-            ->where('transaction_type_id', 1) // VENTA
-            ->sum('amount');
-
-        // Por método de pago
-        $salesByPaymentMethod = DB::table('transactions')
-            ->join('payment_method', 'transactions.payment_method_id', '=', 'payment_method.payment_method_id')
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
             ->where('transactions.status_id', 1)
-            ->where('transactions.transaction_type_id', 1)
-            ->groupBy('transactions.payment_method_id', 'payment_method.payment_method')
-            ->selectRaw('payment_method.payment_method as method, SUM(transactions.amount) as total')
-            ->get()
-            ->map(fn($item) => [
-                'label' => $item->method,
-                'value' => round($item->total, 2)
-            ])->values();
+            ->where('transactions.transaction_type_id', 1) // VENTA
+            ->sum('transactions.amount');
+
+        // Por método de pago. Las ventas MIXTAS (método 4) se reparten: su parte
+        // en efectivo suma a EFECTIVO y su parte en tarjeta a TARJETA (igual que el
+        // arqueo de caja), en vez de aparecer como una categoría "MIXTO" aparte.
+        $pmBase = DB::table('transactions')
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
+            ->where('transactions.status_id', 1)
+            ->where('transactions.transaction_type_id', 1);
+
+        $pmCash  = (clone $pmBase)->where('payment_method_id', 1)->sum('amount')
+                 + (clone $pmBase)->where('payment_method_id', 4)->sum('amount_cash');
+        $pmCard  = (clone $pmBase)->where('payment_method_id', 2)->sum('amount')
+                 + (clone $pmBase)->where('payment_method_id', 4)->sum('amount_card');
+        $pmChivo = (clone $pmBase)->where('payment_method_id', 3)->sum('amount');
+
+        $salesByPaymentMethod = collect([
+            ['label' => 'EFECTIVO', 'value' => round($pmCash, 2)],
+            ['label' => 'TARJETA',  'value' => round($pmCard, 2)],
+            ['label' => 'CHIVO',    'value' => round($pmChivo, 2)],
+        ])->filter(fn($r) => $r['value'] > 0)->values();
 
         // Top 8 productos
         $topProducts = DB::table('transaction_detail')
             ->join('transactions', 'transaction_detail.transaction_id', '=', 'transactions.id')
             ->join('products', 'transaction_detail.product_id', '=', 'products.id')
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
             ->where('transactions.status_id', 1)
             ->where('transactions.transaction_type_id', 1)
             ->groupBy('transaction_detail.product_id', 'products.product_name')
@@ -148,13 +202,14 @@ class DashboardController extends Controller
                 'value' => round($item->total, 2)
             ])->values();
 
-        // Tendencia diaria (últimos 30 días)
+        // Tendencia diaria (dentro del periodo de la feria)
         $dailyTrend = DB::table('transactions')
-            ->where('status_id', 1)
-            ->where('transaction_type_id', 1)
-            ->whereBetween('transaction_date', [now()->subDays(30), now()])
-            ->groupByRaw('DATE(transaction_date)')
-            ->selectRaw('DATE(transaction_date) as date, SUM(amount) as daily_total')
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
+            ->where('transactions.status_id', 1)
+            ->where('transactions.transaction_type_id', 1)
+            ->groupBy('transactions.jornada')
+            ->selectRaw('transactions.jornada as date, SUM(transactions.amount) as daily_total')
             ->orderBy('date')
             ->get()
             ->map(fn($item) => [
@@ -165,6 +220,7 @@ class DashboardController extends Controller
         // Ganancias por estación
         $gainsByStation = DB::table('transactions')
             ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
             ->where('transactions.status_id', 1)
             ->where('transactions.transaction_type_id', 1)
             ->groupBy('transactions.station_id', 'stations.station_name')
@@ -177,20 +233,26 @@ class DashboardController extends Controller
 
         // Cantidad de transacciones
         $clientTransactionCount = DB::table('transactions')
-            ->where('status_id', 1)
-            ->where('transaction_type_id', 1)
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
+            ->where('transactions.status_id', 1)
+            ->where('transactions.transaction_type_id', 1)
             ->count();
 
         // ====== VENTAS EMPLEADO (transaction_type_id = 2) ======
         $employeeSalesTotal = DB::table('transactions')
-            ->where('status_id', 1)
-            ->where('transaction_type_id', 2) // VENTA EMPLEADO
-            ->sum('amount');
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
+            ->where('transactions.status_id', 1)
+            ->where('transactions.transaction_type_id', 2) // VENTA EMPLEADO
+            ->sum('transactions.amount');
 
         // Top productos en venta empleado
         $topEmployeeProducts = DB::table('transaction_detail')
             ->join('transactions', 'transaction_detail.transaction_id', '=', 'transactions.id')
             ->join('products', 'transaction_detail.product_id', '=', 'products.id')
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
             ->where('transactions.status_id', 1)
             ->where('transactions.transaction_type_id', 2)
             ->groupBy('transaction_detail.product_id', 'products.product_name')
@@ -205,11 +267,12 @@ class DashboardController extends Controller
 
         // Tendencia de venta empleado por día
         $employeeDailyTrend = DB::table('transactions')
-            ->where('status_id', 1)
-            ->where('transaction_type_id', 2)
-            ->whereBetween('transaction_date', [now()->subDays(30), now()])
-            ->groupByRaw('DATE(transaction_date)')
-            ->selectRaw('DATE(transaction_date) as date, COUNT(*) as daily_count, SUM(amount) as daily_amount')
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
+            ->where('transactions.status_id', 1)
+            ->where('transactions.transaction_type_id', 2)
+            ->groupBy('transactions.jornada')
+            ->selectRaw('transactions.jornada as date, COUNT(*) as daily_count, SUM(transactions.amount) as daily_amount')
             ->orderBy('date')
             ->get()
             ->map(fn($item) => [
@@ -219,8 +282,10 @@ class DashboardController extends Controller
 
         // Cantidad de transacciones empleado
         $employeeTransactionCount = DB::table('transactions')
-            ->where('status_id', 1)
-            ->where('transaction_type_id', 2)
+            ->join('stations', 'transactions.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
+            ->where('transactions.status_id', 1)
+            ->where('transactions.transaction_type_id', 2)
             ->count();
 
         // ====== TICKETS QR ======
@@ -228,6 +293,7 @@ class DashboardController extends Controller
             ->join('tickets', 'station_tickets.ticket_id', '=', 'tickets.id')
             ->join('products', 'tickets.product_id', '=', 'products.id')
             ->join('stations', 'station_tickets.station_id', '=', 'stations.id')
+            ->where('stations.fair_id', $fairId)
             ->where('tickets.status_id', 1) // APLICADO (anteriormente "canjeados")
             ->select('station_tickets.*', 'products.product_name', 'stations.station_name', 'station_tickets.created_at')
             ->get();
@@ -256,6 +322,13 @@ class DashboardController extends Controller
             })->values();
 
         return response()->json([
+            'fair' => $fair ? [
+                'id'         => $fair->id,
+                'name'       => $fair->fair_name,
+                'start_date' => $fair->start_date,
+                'end_date'   => $fair->end_date,
+                'status'     => (int) $fair->status,
+            ] : null,
             'sales' => [
                 'byPaymentMethod' => $salesByPaymentMethod,
                 'byProduct' => $topProducts,
@@ -277,5 +350,35 @@ class DashboardController extends Controller
                 'total' => $ticketTotal,
             ],
         ]);
+    }
+
+    /**
+     * Estructura vacía del dashboard (cuando no hay feria seleccionable).
+     */
+    private function emptyChartPayload(): array
+    {
+        return [
+            'fair' => null,
+            'sales' => [
+                'byPaymentMethod' => [],
+                'byProduct' => [],
+                'byDate' => [],
+                'byStation' => [],
+                'total' => 0,
+                'transactionCount' => 0,
+            ],
+            'employeeSales' => [
+                'byProduct' => [],
+                'byDate' => [],
+                'total' => 0,
+                'transactionCount' => 0,
+            ],
+            'tickets' => [
+                'byProduct' => [],
+                'byDate' => [],
+                'byStation' => [],
+                'total' => 0,
+            ],
+        ];
     }
 }

@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Printer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Modules\Ticket\Models\Fair;
 use Modules\Ticket\Models\Station;
 
 
@@ -22,14 +24,31 @@ class PrinterController extends Controller
     /**
      * Mostrar listado de impresoras.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $printers = Printer::with('station')->get();
-        $stations = Station::all(['id', 'station_name']);
+        // Ferias para el selector (todas). Por defecto, la abierta más reciente.
+        $fairs = Fair::query()
+            ->orderByDesc('start_date')
+            ->get(['id', 'fair_name', 'start_date', 'end_date', 'status']);
+
+        $selectedFairId = $request->integer('fair_id') ?: Fair::defaultDashboardId();
+
+        // Impresoras de la feria seleccionada (vía sus estaciones).
+        $stationIds = $selectedFairId
+            ? DB::table('stations')->where('fair_id', $selectedFairId)->pluck('id')
+            : collect();
+
+        $printers = Printer::with('station')
+            ->whereIn('station_id', $stationIds)
+            ->get();
 
         return Inertia::render('Printers', [
-            'printers' => $printers,
-            'stations' => $stations,
+            'printers'       => $printers,
+            // Solo stands de ferias ABIERTAS (etiquetados con su feria) para crear/editar.
+            'stations'       => Fair::openStationOptions(),
+            'fairs'          => $fairs,
+            'selectedFairId' => $selectedFairId,
+            'filters'        => $request->only(['fair_id']),
         ]);
     }
 
@@ -44,6 +63,12 @@ class PrinterController extends Controller
             'ip_adress' => 'nullable|ip',
             'status' => 'boolean',
         ]);
+
+        if (! Fair::stationBelongsToOpenFair((int) $request->station_id)) {
+            return back()->withErrors([
+                'station_id' => 'La estación seleccionada no pertenece a una feria abierta.',
+            ]);
+        }
 
         Printer::create([
             'printer_name' => $request->printer_name,
@@ -66,6 +91,12 @@ class PrinterController extends Controller
             'ip_adress' => 'nullable|ip',
             'status' => 'boolean',
         ]);
+
+        if (! Fair::stationBelongsToOpenFair((int) $request->station_id)) {
+            return back()->withErrors([
+                'station_id' => 'La estación seleccionada no pertenece a una feria abierta.',
+            ]);
+        }
 
         $printer->update([
             'printer_name' => $request->printer_name,

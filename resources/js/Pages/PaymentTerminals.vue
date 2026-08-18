@@ -11,11 +11,29 @@ const page = usePage()
 const terminals = computed(() => page.props.terminals ?? { data: [], total: 0, per_page: 10, last_page: 1, current_page: 1 })
 const stations = computed(() => page.props.stations ?? [])
 const users = computed(() => page.props.users ?? [])
-const filters = computed(() => page.props.filters ?? { q: '', perPage: 10 })
+const filters = computed(() => page.props.filters ?? { q: '', perPage: 10, sortBy: 'id', sortDir: 'desc' })
 
-// Paginación
-const pageNumber = ref(terminals.value?.current_page ?? 1)
-watch(pageNumber, (p) => changePage(p))
+// Selector de feria
+const fairs = computed(() => page.props.fairs ?? [])
+const currentFairId = ref(page.props.selectedFairId ?? null)
+const statusText = { 1: 'Programada', 2: 'Abierta', 3: 'Cerrada' }
+const fairOptions = computed(() =>
+  fairs.value.map((f) => ({ ...f, label: `${f.fair_name} · ${statusText[f.status] || ''}` }))
+)
+function onFairChange() {
+  fetchTerminals({ page: 1 })
+}
+
+// Paginación / orden (todo lo resuelve el backend)
+const pageNumber = ref(Number(terminals.value.current_page ?? 1))
+const perPage = ref(Number(terminals.value.per_page ?? 10))
+const sortBy = ref([{ key: filters.value.sortBy ?? 'id', order: filters.value.sortDir ?? 'desc' }])
+
+// Al volver la respuesta de Inertia, re-sincronizamos la tabla con el servidor.
+watch(() => page.props.terminals, (t) => {
+  pageNumber.value = Number(t?.current_page ?? 1)
+  perPage.value = Number(t?.per_page ?? 10)
+})
 
 // Estados UI
 const modal = ref(false)
@@ -38,7 +56,7 @@ const headers = [
   { title: 'Estación', key: 'station', sortable: false },
   { title: 'Usuario', key: 'user', sortable: false },
   { title: 'Estado', key: 'status_id', sortable: false, align: 'center', width: '130px' },
-  { title: 'Acciones', key: 'actions', align: 'center', width: '120px' },
+  { title: 'Acciones', key: 'actions', sortable: false, align: 'center', width: '120px' },
 ]
 
 // Abrir modal
@@ -98,9 +116,38 @@ function deleteTerminal() {
   })
 }
 
-// Paginación
-function changePage(p = 1) {
-  router.get('/payment-terminals', { page: p, q: filters.value.q, perPage: filters.value.perPage }, { preserveState: true })
+// Petición al servidor con el estado actual de la tabla
+function fetchTerminals({ page: p = pageNumber.value, itemsPerPage = perPage.value, sort = sortBy.value } = {}) {
+  router.get('/payment-terminals',
+    {
+      page: p,
+      perPage: itemsPerPage,
+      sortBy: sort?.[0]?.key ?? 'id',
+      sortDir: sort?.[0]?.order ?? 'desc',
+      q: filters.value.q,
+      fair_id: currentFairId.value,
+    },
+    { preserveState: true, preserveScroll: true, replace: true, only: ['terminals', 'filters'] }
+  )
+}
+
+// v-data-table-server emite esto al montar y en cada cambio de página/orden/tamaño.
+// Sin la comparación contra lo que ya devolvió el backend se dispararía una
+// petición redundante en cada render.
+function onOptionsUpdate({ page: p, itemsPerPage, sortBy: sort }) {
+  const nextKey = sort?.[0]?.key ?? 'id'
+  const nextDir = sort?.[0]?.order ?? 'desc'
+  const sameSort = nextKey === (filters.value.sortBy ?? 'id') && nextDir === (filters.value.sortDir ?? 'desc')
+  const samePerPage = Number(itemsPerPage) === Number(terminals.value.per_page)
+
+  if (p === terminals.value.current_page && samePerPage && sameSort) return
+
+  // Al cambiar el tamaño de página o el orden, volvemos a la primera página.
+  fetchTerminals({
+    page: samePerPage && sameSort ? p : 1,
+    itemsPerPage,
+    sort,
+  })
 }
 </script>
 
@@ -110,12 +157,15 @@ function changePage(p = 1) {
     <v-container fluid class="pa-4" style="background-color: #f8f8f8; min-height: 100vh;">
       <v-card flat class="pa-4 elevation-1" style="background-color: white;">
         <v-row class="align-center justify-space-between mb-2">
-          <v-col cols="12" sm="6">
+          <v-col cols="12" sm="4">
             <v-card-title class="text-h6 font-weight-bold text-left pa-0">
               Terminales de Pago
             </v-card-title>
           </v-col>
-          <v-col cols="12" sm="6" class="d-flex justify-end">
+          <v-col cols="12" sm="8" class="d-flex justify-end align-center ga-2">
+            <v-autocomplete v-model="currentFairId" :items="fairOptions" item-title="label" item-value="id"
+              label="Feria" density="compact" variant="outlined" hide-details style="max-width: 260px;"
+              @update:model-value="onFairChange" />
             <v-btn color="black" variant="elevated" @click="openModal()">
               <v-icon left>mdi-plus</v-icon> Agregar Terminal
             </v-btn>
@@ -124,7 +174,9 @@ function changePage(p = 1) {
 
         <v-divider></v-divider>
 
-        <v-data-table :items="terminals.data ?? []" :headers="headers" class="elevation-0" dense>
+        <v-data-table-server :items="terminals.data ?? []" :headers="headers" :items-length="terminals.total ?? 0"
+          v-model:page="pageNumber" v-model:items-per-page="perPage" v-model:sort-by="sortBy"
+          :items-per-page-options="[10, 25, 50, 100]" @update:options="onOptionsUpdate" class="elevation-0" dense>
           <!-- Estación -->
           <template #item.station="{ item }">
             <span>{{ item.station?.station_name || 'Sin estación' }}</span>
@@ -169,7 +221,7 @@ function changePage(p = 1) {
               </v-btn>
             </div>
           </template>
-        </v-data-table>
+        </v-data-table-server>
         <!-- Modal Crear / Editar Terminal -->
         <v-dialog v-model="modal" max-width="500">
           <v-card>
@@ -181,11 +233,12 @@ function changePage(p = 1) {
               <v-text-field v-model="form.terminal_name" label="Nombre de la Terminal" variant="outlined" dense
                 required />
 
-              <v-select v-model="form.station_id" :items="stations" item-title="station_name" item-value="id"
-                label="Estación" variant="outlined" dense required />
+              <v-autocomplete v-model="form.station_id" :items="stations" item-title="label" item-value="id"
+                label="Estación (feria abierta)" variant="outlined" dense required auto-select-first
+                :error-messages="form.errors.station_id" no-data-text="No hay stands de ferias abiertas" />
 
-              <v-select v-model="form.user_id" :items="users" item-title="name" item-value="id" label="Cajero"
-                variant="outlined" dense />
+              <v-autocomplete v-model="form.user_id" :items="users" item-title="name" item-value="id" label="Cajero"
+                variant="outlined" dense clearable auto-select-first no-data-text="Sin coincidencias" />
             </v-card-text>
 
             <v-card-actions>

@@ -6,11 +6,25 @@
       </VCardTitle>
 
       <VCardText>
-        <div class="text-subtitle-2 mb-2">Selecciona los productos:</div>
+        <div class="d-flex align-center justify-space-between mb-2">
+          <span class="text-subtitle-2">Selecciona los productos:</span>
+          <span class="text-caption text-medium-emphasis">{{ selectedProducts.length }} seleccionado(s)</span>
+        </div>
 
-        <VList>
+        <VTextField
+          v-model="search"
+          label="Buscar producto"
+          density="compact"
+          variant="outlined"
+          hide-details
+          clearable
+          prepend-inner-icon="mdi-magnify"
+          class="mb-2"
+        />
+
+        <VList max-height="320" class="overflow-y-auto">
           <VListItem
-            v-for="product in productOptions"
+            v-for="product in filteredProducts"
             :key="product.id"
             density="comfortable"
           >
@@ -22,6 +36,10 @@
               />
             </template>
             <VListItemTitle>{{ product.product_name }}</VListItemTitle>
+          </VListItem>
+
+          <VListItem v-if="filteredProducts.length === 0">
+            <VListItemTitle class="text-medium-emphasis">Sin coincidencias</VListItemTitle>
           </VListItem>
         </VList>
       </VCardText>
@@ -52,9 +70,17 @@ const emit = defineEmits(['update:modelValue'])
 const localDialog = ref(false)
 const selectedProducts = ref([])
 const productOptions = ref([])
+const search = ref('')
 
 // ✅ Soportar estaciones con station_id o id
 const stationId = computed(() => props.station?.station_id ?? props.station?.id)
+
+// Filtro en vivo de la lista de productos por nombre.
+const filteredProducts = computed(() => {
+  const q = (search.value || '').trim().toLowerCase()
+  if (!q) return productOptions.value
+  return productOptions.value.filter(p => (p.product_name || '').toLowerCase().includes(q))
+})
 
 watch(() => props.modelValue, (val) => { localDialog.value = val })
 
@@ -68,6 +94,7 @@ watch(localDialog, async (isOpen) => {
 
   if (!isOpen) {
     selectedProducts.value = []
+    search.value = ''
   }
 })
 

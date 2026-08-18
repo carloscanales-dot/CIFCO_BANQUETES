@@ -34,6 +34,8 @@ class ReporteController extends Controller
                 't.id',
                 't.transaction_date',
                 't.amount',
+                't.amount_cash',
+                't.amount_card',
                 't.status_id',
                 't.payment_method_id',
                 's.station_name',
@@ -44,11 +46,11 @@ class ReporteController extends Controller
 
         // Aplicar filtros
         if ($request->filled('fecha_inicio')) {
-            $query->whereDate('t.transaction_date', '>=', $request->fecha_inicio);
+            $query->where('t.jornada', '>=', $request->fecha_inicio);
         }
 
         if ($request->filled('fecha_fin')) {
-            $query->whereDate('t.transaction_date', '<=', $request->fecha_fin);
+            $query->where('t.jornada', '<=', $request->fecha_fin);
         }
 
         if ($request->filled('station_id')) {
@@ -102,17 +104,9 @@ class ReporteController extends Controller
             ->limit(10)
             ->get();
 
-        // Totales por método de pago
-        $totalesPorMetodoPago = DB::table('transactions as t')
-            ->leftJoin('payment_method as pm', 't.payment_method_id', '=', 'pm.payment_method_id')
-            ->whereIn('t.id', $transactions->pluck('id'))
-            ->select(
-                'pm.payment_method',
-                DB::raw('COUNT(*) as cantidad_transacciones'),
-                DB::raw('SUM(t.amount) as total')
-            )
-            ->groupBy('pm.payment_method')
-            ->get();
+        // Totales por método de pago. Las ventas MIXTAS (método 4) se reparten en
+        // efectivo/tarjeta (igual que el arqueo de caja), sin bucket "MIXTO".
+        $totalesPorMetodoPago = $this->paymentBreakdown($transactions);
 
         // Ventas por estación
         $ventasPorEstacion = DB::table('transactions as t')
@@ -166,6 +160,9 @@ class ReporteController extends Controller
                 't.id',
                 't.transaction_date',
                 't.amount',
+                't.amount_cash',
+                't.amount_card',
+                't.payment_method_id',
                 's.station_name',
                 'u.name as user_name',
                 'pm.payment_method'
@@ -175,11 +172,11 @@ class ReporteController extends Controller
 
         // Aplicar filtros
         if ($request->filled('fecha_inicio')) {
-            $query->whereDate('t.transaction_date', '>=', $request->fecha_inicio);
+            $query->where('t.jornada', '>=', $request->fecha_inicio);
         }
 
         if ($request->filled('fecha_fin')) {
-            $query->whereDate('t.transaction_date', '<=', $request->fecha_fin);
+            $query->where('t.jornada', '<=', $request->fecha_fin);
         }
 
         if ($request->filled('station_id')) {
@@ -232,17 +229,8 @@ class ReporteController extends Controller
             ->limit(10)
             ->get();
 
-        // Ventas por método de pago
-        $ventasPorMetodo = DB::table('transactions as t')
-            ->leftJoin('payment_method as pm', 't.payment_method_id', '=', 'pm.payment_method_id')
-            ->whereIn('t.id', $transactions->pluck('id'))
-            ->select(
-                'pm.payment_method',
-                DB::raw('COUNT(*) as cantidad'),
-                DB::raw('SUM(t.amount) as total')
-            )
-            ->groupBy('pm.payment_method')
-            ->get();
+        // Ventas por método de pago (mixtas repartidas en efectivo/tarjeta).
+        $ventasPorMetodo = $this->paymentBreakdown($transactions);
 
         // Ventas por estación
         $ventasPorEstacion = DB::table('transactions as t')
@@ -299,6 +287,32 @@ class ReporteController extends Controller
             new ReportesExport($filters),
             'reporte_ventas_' . now()->format('YmdHis') . '.xlsx'
         );
+    }
+
+    /**
+     * Desglose por método de pago repartiendo las ventas mixtas (método 4)
+     * en su parte efectivo y su parte tarjeta. Recibe una colección de
+     * transacciones con amount, amount_cash, amount_card y payment_method_id.
+     */
+    private function paymentBreakdown($transactions)
+    {
+        $cashTotal  = $transactions->where('payment_method_id', 1)->sum('amount')
+                    + $transactions->where('payment_method_id', 4)->sum('amount_cash');
+        $cardTotal  = $transactions->where('payment_method_id', 2)->sum('amount')
+                    + $transactions->where('payment_method_id', 4)->sum('amount_card');
+        $chivoTotal = $transactions->where('payment_method_id', 3)->sum('amount');
+
+        $cashCount  = $transactions->where('payment_method_id', 1)->count()
+                    + $transactions->where('payment_method_id', 4)->where('amount_cash', '>', 0)->count();
+        $cardCount  = $transactions->where('payment_method_id', 2)->count()
+                    + $transactions->where('payment_method_id', 4)->where('amount_card', '>', 0)->count();
+        $chivoCount = $transactions->where('payment_method_id', 3)->count();
+
+        return collect([
+            ['payment_method' => 'EFECTIVO', 'cantidad_transacciones' => $cashCount,  'cantidad' => $cashCount,  'total' => round($cashTotal, 2)],
+            ['payment_method' => 'TARJETA',  'cantidad_transacciones' => $cardCount,  'cantidad' => $cardCount,  'total' => round($cardTotal, 2)],
+            ['payment_method' => 'CHIVO',    'cantidad_transacciones' => $chivoCount, 'cantidad' => $chivoCount, 'total' => round($chivoTotal, 2)],
+        ])->filter(fn($r) => $r['total'] > 0 || $r['cantidad_transacciones'] > 0)->values();
     }
 
     /**

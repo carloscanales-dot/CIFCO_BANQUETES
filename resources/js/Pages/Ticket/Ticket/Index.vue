@@ -1,7 +1,7 @@
 <script setup>
 import { storeToRefs } from 'pinia'
-import { reactive, ref, inject, onMounted } from 'vue'
-import { Head, Link, router } from '@inertiajs/vue3'
+import { reactive, ref, inject, onMounted, computed } from 'vue'
+import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import DeleteDialog from '@/Components/DeleteDialog.vue'
@@ -17,10 +17,18 @@ const queryString = ref([])
 const cancelDialog = ref(false)
 const generateDialog = ref(false)
 const helpers = inject('helpers')
+const page = usePage()
 const ticketStore = useTicketStore()
 const productStore = useProductStore()
 const { products } = storeToRefs(productStore)
 const { items, totalItems, isLoading } = storeToRefs(ticketStore)
+
+// Ferias para el filtro (buscable). Se muestran todas; el listado no se
+// autofiltra para no ocultar cortesías legacy (fair_id nulo).
+const statusText = { 1: 'Programada', 2: 'Abierta', 3: 'Cerrada' }
+const fairOptions = computed(() =>
+  (page.props.fairs || []).map((f) => ({ ...f, label: `${f.fair_name} · ${statusText[f.status] || ''}` }))
+)
 
 const filterForm = reactive({
   uuid: null,
@@ -28,6 +36,7 @@ const filterForm = reactive({
   product_id: null,
   start_id: null,
   end_id: null,
+  fair_id: null,
 })
 
 const cancelItem = (item) => {
@@ -88,7 +97,18 @@ onMounted(() => {
     <VCard title="Formulario de filtro">
       <VCardText>
         <VRow dense>
-          <VCol cols="12" md="12" sm="12">
+          <VCol cols="12" md="6" sm="12">
+            <VAutocomplete
+              v-model="filterForm.fair_id"
+              label="Feria"
+              :items="fairOptions"
+              item-title="label"
+              item-value="id"
+              clearable
+              hide-details
+            />
+          </VCol>
+          <VCol cols="12" md="6" sm="12">
             <VAutocomplete
               v-model="filterForm.product_id"
               label="Nombre del producto"
@@ -208,6 +228,7 @@ export default {
         { title: 'Producto', key: 'product_name' },
         { title: 'UUID', key: 'uuid' },
         { title: 'Precio', key: 'unit_price' },
+        { title: 'Feria', key: 'fair_name' },
         { title: 'Generado para', key: 'generated_for' },
         { title: 'Estatus', key: 'status' },
         { title: 'Acción', key: 'action', sortable: false },

@@ -1,7 +1,8 @@
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useToast } from 'vue-toastification'
 import { storeToRefs } from 'pinia'
+import axios from 'axios'
 import { useTicketStore } from '@/Stores/Ticket/ticketStore'
 import { useProductStore } from '@/Stores/Ticket/productStore'
 
@@ -12,7 +13,22 @@ const { products } = storeToRefs(productStore)
 
 const emits = defineEmits(['result'])
 
+// Solo ferias ABIERTAS pueden recibir cortesías nuevas.
+const openFairs = ref([])
+onMounted(async () => {
+  try {
+    const { data } = await axios.get('/ticket/fair/list/O')
+    openFairs.value = data.fairs ?? []
+  } catch {
+    openFairs.value = []
+  }
+})
+
 const submit = async () => {
+  if (!ticketStore.form.fair_id) {
+    toast.error('Selecciona la feria para la que se generan las cortesías.')
+    return
+  }
   if (!ticketStore.form.product_id) {
     toast.error('Please select a product.')
     return
@@ -37,6 +53,20 @@ const submit = async () => {
     <VForm @submit.prevent="submit">
       <VCard prepend-icon="mdi-plus" title="Generacion de tickets">
         <VCardText>
+          <VRow>
+            <VCol cols="12" md="12" sm="12">
+              <VAutocomplete
+                v-model="ticketStore.form.fair_id"
+                label="Feria (abierta)"
+                :items="openFairs"
+                item-title="fair_name"
+                item-value="id"
+                clearable
+                no-data-text="No hay ferias abiertas"
+                :error-messages="ticketStore.errors.fair_id"
+              />
+            </VCol>
+          </VRow>
           <VRow>
             <VCol cols="12" md="12" sm="12">
               <VAutocomplete

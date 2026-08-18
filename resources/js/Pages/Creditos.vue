@@ -1,8 +1,19 @@
 <template>
     <Head title="Créditos" />
     <CreditoLayout>
+        <!-- Estado: FERIA CERRADA / NO ABIERTA (cierre real) -->
+        <div v-if="fairClosed">
+            <v-card color="error" border="start" elevation="2">
+                <v-card-title class="text-h5 font-weight-bold">FERIA FINALIZADA</v-card-title>
+                <v-card-text class="text-subtitle-1">
+                    La feria <strong>{{ props.fair_name }}</strong> no está abierta. Es un evento finalizado,
+                    por lo que no se pueden registrar créditos en esta estación.
+                </v-card-text>
+            </v-card>
+        </div>
+
         <!-- Estado: CERRADA -->
-        <div v-if="props.terminal_status === 6">
+        <div v-else-if="props.terminal_status === 6">
             <v-card color="error" border="start" elevation="2">
                 <v-card-title class="text-h5 font-weight-bold">CAJA CERRADA</v-card-title>
                 <v-card-text class="text-subtitle-1">
@@ -147,7 +158,11 @@ const props = defineProps({
     station_name: String,
     terminal_status: Number,
     fair_name: String,
+    fair_status: Number,
 })
+
+// La feria solo permite créditos si está ABIERTA (status = 2).
+const fairClosed = computed(() => props.fair_status != null && props.fair_status !== 2)
 
 // -- PRE-CIERRE COMPUTED --
 const precloseOpening = computed(() => {
@@ -247,6 +262,11 @@ const printCreditReceipt = async () => {
     if (processing.value) return
 
     // Validaciones
+    if (fairClosed.value) {
+        showToast("La feria está cerrada. No se pueden registrar créditos.", "error")
+        return
+    }
+
     if (!selectedEmployee.value) {
         showToast("Debe seleccionar un empleado antes de guardar el crédito", "warning")
         return

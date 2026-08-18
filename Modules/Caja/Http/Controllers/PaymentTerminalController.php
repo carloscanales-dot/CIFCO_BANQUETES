@@ -4,6 +4,7 @@ namespace Modules\Caja\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Modules\Caja\Models\PaymentTerminal;
 use App\Models\User;
@@ -17,28 +18,56 @@ class PaymentTerminalController extends Controller
     public function index(Request $request)
     {
         $q = $request->input('q');
-        $perPage = $request->input('perPage', 10);
+
+        // La tabla envía perPage/sortBy/sortDir; se validan contra listas blancas
+        // para evitar consultas arbitrarias.
+        $perPage = (int) $request->input('perPage', 10);
+        if (! in_array($perPage, [10, 25, 50, 100], true)) {
+            $perPage = 10;
+        }
+
+        $sortBy  = $request->input('sortBy', 'id');
+        if (! in_array($sortBy, ['id', 'terminal_name'], true)) {
+            $sortBy = 'id';
+        }
+        $sortDir = $request->input('sortDir') === 'asc' ? 'asc' : 'desc';
+
+        // Ferias para el selector (todas: permite ver/gestionar terminales de una
+        // feria cerrada para conciliación). Por defecto, la abierta más reciente.
+        $fairs = Fair::query()
+            ->orderByDesc('start_date')
+            ->get(['id', 'fair_name', 'start_date', 'end_date', 'status']);
+
+        $selectedFairId = $request->integer('fair_id') ?: Fair::defaultDashboardId();
+
+        // Terminales de la feria seleccionada (vía sus estaciones).
+        $stationIds = $selectedFairId
+            ? DB::table('stations')->where('fair_id', $selectedFairId)->pluck('id')
+            : collect();
 
         $terminals = PaymentTerminal::with(['station', 'user', 'status'])
+            ->whereIn('station_id', $stationIds)
             ->when($q, fn($query) => $query->where('terminal_name', 'like', "%{$q}%"))
-            ->orderBy('id', 'desc')
+            ->orderBy($sortBy, $sortDir)
             ->paginate($perPage)
             ->withQueryString();
-
-        // Feria abierta (status_id = 5 → abierta)
-        $openFair = Fair::where('status', 2)->first();
-
-        $stations = $openFair
-            ? $openFair->stations()->select('id', 'station_name')->orderBy('station_name')->get()
-            : collect();
 
         $users = User::select('id', 'name', 'email')->orderBy('name')->get();
 
         return Inertia::render('PaymentTerminals', [
-            'terminals' => $terminals,
-            'stations'  => $stations,
-            'users'     => $users,
-            'filters'   => $request->only(['q', 'perPage']),
+            'terminals'      => $terminals,
+            // Solo stands de ferias ABIERTAS (etiquetados con su feria) para crear/editar.
+            'stations'       => Fair::openStationOptions(),
+            'users'          => $users,
+            'fairs'          => $fairs,
+            'selectedFairId' => $selectedFairId,
+            'filters'        => [
+                'q'       => $q,
+                'perPage' => $perPage,
+                'fair_id' => $selectedFairId,
+                'sortBy'  => $sortBy,
+                'sortDir' => $sortDir,
+            ],
         ]);
     }
 
@@ -53,7 +82,13 @@ class PaymentTerminalController extends Controller
             'user_id'       => 'nullable|exists:users,id',
         ]);
 
-        // por defecto: estado cerrado (6)
+        if (! Fair::stationBelongsToOpenFair($data['station_id'])) {
+            return back()->withErrors([
+                'station_id' => 'La estación seleccionada no pertenece a una feria abierta.',
+            ]);
+        }
+
+        // por defecto: caja cerrada (status_id = 6)
         $data['status_id'] = 6;
 
         PaymentTerminal::create($data);
@@ -72,6 +107,12 @@ class PaymentTerminalController extends Controller
             'user_id'       => 'nullable|exists:users,id',
         ]);
 
+        if (! Fair::stationBelongsToOpenFair($data['station_id'])) {
+            return back()->withErrors([
+                'station_id' => 'La estación seleccionada no pertenece a una feria abierta.',
+            ]);
+        }
+
         $paymentTerminal->update($data);
 
         return redirect()->route('payment-terminals.index');
@@ -87,23 +128,6 @@ class PaymentTerminalController extends Controller
 
         return redirect()->route('payment-terminals.index');
         //->with('success', 'Terminal eliminada correctamente.');
-    }
-
-    /**
-     * Cambiar estado (1 abierta / 2 cerrada)
-     */
-    // Modules/Caja/Http/Controllers/PaymentTerminalController.php
-    public function toggleStatus(PaymentTerminal $paymentTerminal)
-    {
-        // Alternar entre abierto (5) y cerrado (6)
-        $nuevoEstado = $paymentTerminal->status_id == 5 ? 6 : 5;
-
-        $paymentTerminal->update(['status_id' => $nuevoEstado]);
-
-        return response()->json([
-            'success'    => true,
-            'status_id'  => $nuevoEstado,
-        ]);
     }
 
     /**

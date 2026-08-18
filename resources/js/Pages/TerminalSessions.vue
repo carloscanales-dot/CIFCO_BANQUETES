@@ -10,7 +10,6 @@ const page = usePage()
 
 const terminals = computed(() => {
     const t = page.props.terminals ?? {}
-    console.log('Terminals data:', t)
     return {
         data: Array.isArray(t.data) ? t.data : [],
         current_page: t.current_page ?? 1,
@@ -26,6 +25,20 @@ const pageNumber = ref(terminals.value?.current_page ?? 1)
 watch(() => terminals.value.current_page, (newPage) => {
     pageNumber.value = newPage
 })
+
+// Selector de feria
+const fairs = computed(() => page.props.fairs ?? [])
+const currentFairId = ref(page.props.selectedFairId ?? null)
+const statusText = { 1: 'Programada', 2: 'Abierta', 3: 'Cerrada' }
+const fairOptions = computed(() =>
+    fairs.value.map((f) => ({ ...f, label: `${f.fair_name} · ${statusText[f.status] || ''}` }))
+)
+function onFairChange() {
+    router.get('/terminal-sessions',
+        { fair_id: currentFairId.value, perPage: 10 },
+        { preserveState: true, preserveScroll: true }
+    )
+}
 
 // Modal
 const dialog = ref(false)
@@ -45,7 +58,8 @@ function onPageChange(newPage) {
     if (!newPage) return
     router.get('/terminal-sessions', {
         page: newPage,
-        perPage: 10
+        perPage: 10,
+        fair_id: currentFairId.value,
     }, {
         preserveState: false,
         preserveScroll: false,
@@ -58,15 +72,11 @@ function onPageChange(newPage) {
 
 // Montos esperados del sistema
 const expectedCash = computed(() => {
-    const val = Number(selectedTerminal.value?.openings?.[0]?.total_cash ?? 0)
-    console.log('expectedCash computed:', val)
-    return val
+    return Number(selectedTerminal.value?.openings?.[0]?.total_cash ?? 0)
 })
 
 const expectedPos = computed(() => {
-    const val = Number(selectedTerminal.value?.openings?.[0]?.total_card ?? 0)
-    console.log('expectedPos computed:', val)
-    return val
+    return Number(selectedTerminal.value?.openings?.[0]?.total_card ?? 0)
 })
 
 // Diferencias por método
@@ -148,9 +158,12 @@ async function confirmOpen() {
             toast.success("Terminal aperturada.")
             dialog.value = false
             router.reload({ only: ['terminals'] })
+        } else {
+            toast.error(response.data.message || "Error al aperturar.")
         }
-    } catch {
-        toast.error("Error al aperturar.")
+    } catch (e) {
+        // Mostrar el motivo real del backend (p. ej. feria cerrada, caja ya abierta).
+        toast.error(e.response?.data?.message || "Error al aperturar.")
     }
 }
 
@@ -174,9 +187,11 @@ async function confirmClose() {
             toast.success("Terminal cerrada.")
             dialog.value = false
             router.reload({ only: ['terminals'] })
+        } else {
+            toast.error(response.data.message || "Error al cerrar.")
         }
-    } catch {
-        toast.error("Error al cerrar.")
+    } catch (e) {
+        toast.error(e.response?.data?.message || "Error al cerrar.")
     }
 }
 
@@ -204,8 +219,17 @@ function exportClosing(item) {
 
             <v-card flat class="pa-4 elevation-1">
 
-                <v-card-title class="text-h6 font-weight-bold">Aperturas y Cierres</v-card-title>
+                <div class="d-flex align-center justify-space-between">
+                    <v-card-title class="text-h6 font-weight-bold pa-0">Aperturas y Cierres</v-card-title>
+                    <v-autocomplete v-model="currentFairId" :items="fairOptions" item-title="label" item-value="id"
+                        label="Feria" density="compact" variant="outlined" hide-details style="max-width: 260px;"
+                        @update:model-value="onFairChange" />
+                </div>
                 <v-divider class="my-3" />
+
+                <v-alert v-if="page.props.message" type="info" variant="tonal" density="compact" class="mb-3">
+                    {{ page.props.message }}
+                </v-alert>
 
                 <v-data-table
                     :items="terminals.data"

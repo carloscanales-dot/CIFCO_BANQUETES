@@ -44,7 +44,10 @@
 
             <!-- Metodo pago column -->
             <template #item.payment_method="{ item }">
-              {{ getPaymentMethodLabel(item) }}
+              <div>{{ getPaymentMethodLabel(item) }}</div>
+              <div v-if="isMixed(item)" class="text-caption text-medium-emphasis">
+                Ef: {{ formatCurrency(item.amount_cash) }} · Tar: {{ formatCurrency(item.amount_card) }}
+              </div>
             </template>
 
             <!-- T. Trasaccion column -->
@@ -210,6 +213,10 @@ function getPaymentMethodLabel(tx) {
   const pm = tx?.payment_method ?? tx?.paymentMethod
   if (pm && (pm.payment_method || pm.name)) return pm.payment_method ?? pm.name
   return tx?.payment_method_label ?? tx?.paymentMethodLabel ?? 'N/A'
+}
+// Venta con pago mixto (método 4): tiene desglose efectivo/tarjeta.
+function isMixed(tx) {
+  return Number(tx?.payment_method_id) === 4
 }
 function getStatusName(tx) {
   return tx?.status?.status ?? tx?.status_name ?? (tx.status_id === 4 ? 'Devolución' : 'N/A')

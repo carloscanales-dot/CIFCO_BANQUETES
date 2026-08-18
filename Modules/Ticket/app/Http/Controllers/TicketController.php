@@ -37,15 +37,21 @@ class TicketController extends Controller
         });
 
         $result = $query
-            ->select('ticket_id', 'uuid', 'product_name', 'unit_price', 'status', 'generated_for')
+            ->select('ticket_id', 'uuid', 'product_name', 'unit_price', 'status', 'generated_for', 'fair_id', 'fair_name')
             ->paginate($request->get('limit', 10));
 
         if ($request->expectsJson()) {
             return response()->json($result);
         }
 
+        $fairs = \Modules\Ticket\Models\Fair::query()
+            ->orderByDesc('start_date')
+            ->get(['id', 'fair_name', 'start_date', 'end_date', 'status']);
+
         return Inertia::render('Ticket/Ticket/Index', [
-            'result' => $result
+            'result'         => $result,
+            'fairs'          => $fairs,
+            'selectedFairId' => \Modules\Ticket\Models\Fair::defaultDashboardId(),
         ]);
     }
 
@@ -147,41 +153,57 @@ class TicketController extends Controller
         $inserts = [];
         $current_date = $this->getCurrentDate()->format('Y-m-d H.i:s');
         $prefix = $this->getPrefixProduct($request->get('product_id'));
-        $max_product_id = $this->getMaxProductId($request->get('product_id'));
+        $fair_id = (int) $request->get('fair_id');
+        $consecutivo = $this->getNextConsecutive($request->get('product_id'), $fair_id);
 
         for ($i = 0; $i < $request->get('quantity'); $i++) {
             $inserts[] = [
-                'uuid' => implode('-', [$prefix, $max_product_id]),
+                // PREFIJO-FERIA-CONSECUTIVO, p.ej. ELOL-2-01. La feria va en el
+                // código porque el consecutivo reinicia en cada una y el uuid
+                // tiene índice único: sin ella, la feria nueva chocaría con los
+                // códigos de la anterior.
+                'uuid' => implode('-', [
+                    $prefix,
+                    $fair_id,
+                    str_pad($consecutivo, 2, '0', STR_PAD_LEFT),
+                ]),
                 'status_id' => $request->get('status_id'),
                 'product_id' => $request->get('product_id'),
+                'fair_id' => $request->get('fair_id'),
                 'generated_for' => $request->get('generated_for'),
                 'created_at' => $current_date,
                 'updated_at' => $current_date
 
             ];
 
-            $max_product_id++;
+            $consecutivo++;
         }
 
         return $inserts;
     }
 
-    protected function getMaxProductId($product_id)
+    /**
+     * Siguiente consecutivo del producto DENTRO de la feria. Antes se buscaba
+     * solo por producto, así que el contador nunca reiniciaba y la feria nueva
+     * seguía la numeración de la anterior (ELOL-36 en lugar de ELOL-01).
+     */
+    protected function getNextConsecutive($product_id, $fair_id)
     {
-        $product_max_id = 1;
-
-        $ticket =  DB::table('tickets')
+        $ticket = DB::table('tickets')
             ->where('product_id', $product_id)
+            ->where('fair_id', $fair_id)
             ->latest('id')
             ->first();
 
-        if ($ticket) {
-            $prefixExplode = explode('-', $ticket->uuid);
-            $product_max_id = (int) $prefixExplode[1];
-            $product_max_id++;
+        if (! $ticket) {
+            return 1;
         }
 
-        return $product_max_id;
+        // El consecutivo es el último segmento, tanto en el formato anterior
+        // (ELOL-36) como en el actual (ELOL-2-36).
+        $segmentos = explode('-', $ticket->uuid);
+
+        return ((int) end($segmentos)) + 1;
     }
 
     protected function getPrefixProduct($product_id)
@@ -224,6 +246,10 @@ class TicketController extends Controller
             'end_id' => [
                 'field' => 'ticket_id',
                 'operator' => 'lessThan'
+            ],
+            'fair_id' => [
+                'field' => 'fair_id',
+                'operator' => 'equal'
             ]
         ];
 

@@ -11,6 +11,8 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class TicketsSheet implements FromCollection, WithHeadings, WithTitle, WithStyles
 {
+    use FiltersTickets;
+
     protected $request;
 
     public function __construct($request)
@@ -23,36 +25,17 @@ class TicketsSheet implements FromCollection, WithHeadings, WithTitle, WithStyle
      */
     public function collection(): Object
     {
-        return DB::table('v_tickets')
-            ->when($this->request->get('product_id'), function ($query, $product_id) {
-                return $query->where('product_id', $product_id);
-            })
-            ->when($this->request->get('status'), function ($query, $status) {
-                // Mapear estados del filtro frontend a status_id
-                $statusMap = [
-                    'D' => 3, // Disponible -> PENDIENTE
-                    'C' => 1, // Canjeado -> APLICADO
-                    'A' => 2, // Anulado -> ANULADO
-                ];
-                $statusId = $statusMap[$status] ?? null;
-                if ($statusId) {
-                    return $query->where('status_id', $statusId);
-                }
-                return $query;
-            })
-            ->when($this->request->get('uuid'), function ($query, $uuid) {
-                return $query->where('uuid', 'like', '%' . $uuid . '%');
-            })
-            ->when($this->request->get('start_id'), function ($query, $start_id) {
-                return $query->where('ticket_id', '>=', $start_id);
-            })
-            ->when($this->request->get('end_id'), function ($query, $end_id) {
-                return $query->where('ticket_id', '<=', $end_id);
-            })
+        return $this->applyTicketFilters(DB::table('v_tickets'), $this->request)
+            // El orden fija el correlativo; sin él quedaba a criterio del motor.
+            ->orderBy('ticket_id')
             ->select('ticket_id', 'product_name', 'uuid', 'unit_price', 'generated_for', 'status')
             ->get()
-            ->map(function ($ticket) {
+            ->values()
+            ->map(function ($ticket, $index) {
                 return [
+                    // Correlativo del listado exportado, empieza en 1. El
+                    // ticket_id es global y arrastra el de ferias anteriores.
+                    'correlativo' => $index + 1,
                     'ticket_id' => $ticket->ticket_id,
                     'product_name' => $ticket->product_name,
                     'uuid' => $ticket->uuid,
@@ -68,7 +51,7 @@ class TicketsSheet implements FromCollection, WithHeadings, WithTitle, WithStyle
      */
     public function headings(): array
     {
-        return ['ID', 'Producto', 'UUID', 'Precio', 'Generado para', 'Estatus'];
+        return ['N°', 'ID Ticket', 'Producto', 'UUID', 'Precio', 'Generado para', 'Estatus'];
     }
 
     /**

@@ -81,6 +81,37 @@ export const useFairStore = defineStore('fairStore', () => {
     })
   }
 
+  const clone = (payload) => {
+    isLoading.value = true
+    router.post(`${api_url}/clone`, payload, {
+      onSuccess: () => {
+        toast.success('Feria clonada correctamente.')
+        // el backend redirige a la edición de la feria nueva
+      },
+      onError: (error) => {
+        errors.value = error
+        toast.error('No se pudo clonar la feria. Verifica los datos.')
+      },
+      onFinish: () => (isLoading.value = false),
+    })
+  }
+
+  const changeStatus = (id, status) => {
+    isLoading.value = true
+    router.patch(`${api_url}/${id}/status`, { status }, {
+      preserveScroll: true,
+      onSuccess: () => {
+        toast.success('Estado de la feria actualizado.')
+        router.visit(api_url) // recarga el listado con el estado nuevo
+      },
+      onError: (error) => {
+        errors.value = error
+        toast.error('No se pudo cambiar el estado de la feria.')
+      },
+      onFinish: () => (isLoading.value = false),
+    })
+  }
+
   const destroy = (id) => {
     isLoading.value = true
     router.delete(`${api_url}/${id}`, {
@@ -108,6 +139,8 @@ export const useFairStore = defineStore('fairStore', () => {
     store,
     ajaxList,
     update,
+    clone,
+    changeStatus,
     destroy,
     resetForm,
   }

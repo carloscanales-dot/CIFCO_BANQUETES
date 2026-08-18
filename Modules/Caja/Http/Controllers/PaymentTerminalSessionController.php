@@ -17,6 +17,25 @@ use Illuminate\Support\Facades\Auth;
 class PaymentTerminalSessionController extends Controller
 {
     /**
+     * Total en EFECTIVO de una colección de transacciones, incluyendo la
+     * parte en efectivo de las ventas con pago MIXTO (método 4).
+     */
+    private function sumCash($transactions): float
+    {
+        return (float) $transactions->where('payment_method_id', 1)->sum('amount')
+            + (float) $transactions->where('payment_method_id', 4)->sum('amount_cash');
+    }
+
+    /**
+     * Total en TARJETA, incluyendo la parte en tarjeta de las ventas mixtas.
+     */
+    private function sumCard($transactions): float
+    {
+        return (float) $transactions->where('payment_method_id', 2)->sum('amount')
+            + (float) $transactions->where('payment_method_id', 4)->sum('amount_card');
+    }
+
+    /**
      * Mostrar lista de aperturas/cierres por terminal
      */
     public function index(Request $request)
@@ -24,22 +43,30 @@ class PaymentTerminalSessionController extends Controller
         $q = $request->input('q');
         $perPage = $request->input('perPage', 10);
 
-        // Debug: verificar el valor recibido
-        \Log::info('Terminal Sessions Index - perPage recibido:', ['perPage' => $perPage, 'tipo' => gettype($perPage)]);
+        // Ferias para el selector (todas: permite conciliar/cerrar cajas de una
+        // feria ya cerrada). Por defecto, la abierta más reciente.
+        $fairs = \Modules\Ticket\Models\Fair::query()
+            ->orderByDesc('start_date')
+            ->get(['id', 'fair_name', 'start_date', 'end_date', 'status']);
 
-        // Feria activa
-        $openFair = \Modules\Ticket\Models\Fair::where('status', 2)->first();
+        $selectedFairId = $request->integer('fair_id')
+            ?: \Modules\Ticket\Models\Fair::defaultDashboardId();
 
-        if (!$openFair) {
+        if (!$selectedFairId) {
             return Inertia::render('TerminalSessions', [
-                'terminals' => [],
-                'filters'   => $request->only(['q', 'perPage']),
-                'message'   => 'No hay ninguna feria activa en este momento.',
+                'terminals'      => [],
+                'stations'       => [],
+                'fairs'          => $fairs,
+                'selectedFairId' => null,
+                'filters'        => $request->only(['q', 'perPage', 'fair_id']),
+                'message'        => 'No hay ninguna feria registrada todavía.',
             ]);
         }
 
-        // Estaciones
-        $stationIds = $openFair->stations()->pluck('id');
+        // Estaciones de la feria seleccionada
+        $stationIds = \Illuminate\Support\Facades\DB::table('stations')
+            ->where('fair_id', $selectedFairId)
+            ->pluck('id');
 
         // Terminales
         $terminals = PaymentTerminal::with([
@@ -73,8 +100,8 @@ class PaymentTerminalSessionController extends Controller
                     ->where('transaction_type_id', 1)
                     ->get();
 
-                $opening->total_cash       = $transactions->where('payment_method_id', 1)->sum('amount');
-                $opening->total_card       = $transactions->where('payment_method_id', 2)->sum('amount');
+                $opening->total_cash       = $this->sumCash($transactions);
+                $opening->total_card       = $this->sumCard($transactions);
                 $opening->total_chivo      = $transactions->where('payment_method_id', 3)->sum('amount');
                 $opening->total_transacted = $transactions->sum('amount');
 
@@ -87,10 +114,15 @@ class PaymentTerminalSessionController extends Controller
         });
 
         return Inertia::render('TerminalSessions', [
-            'terminals' => $terminals,
-            'stations'  => $openFair->stations()->select('id', 'station_name')->get(),
-            'fair'      => $openFair,
-            'filters'   => $request->only(['q', 'perPage']),
+            'terminals'      => $terminals,
+            'stations'       => \Illuminate\Support\Facades\DB::table('stations')
+                ->where('fair_id', $selectedFairId)
+                ->select('id', 'station_name')
+                ->orderBy('station_name')
+                ->get(),
+            'fairs'          => $fairs,
+            'selectedFairId' => $selectedFairId,
+            'filters'        => $request->only(['q', 'perPage', 'fair_id']),
         ]);
     }
 
@@ -105,6 +137,28 @@ class PaymentTerminalSessionController extends Controller
             'user_id'             => 'required|exists:users,id',
             'opening_amount'      => 'required|numeric|min:0',
         ]);
+
+        // No se puede ABRIR caja si la feria de la estación no está abierta.
+        // (El cierre/pre-cierre sí se permiten aunque la feria esté cerrada,
+        //  para poder conciliar cajas al terminar el evento.)
+        $terminal = PaymentTerminal::find($data['payment_terminal_id']);
+        if (! $terminal || ! \Modules\Ticket\Models\Fair::stationBelongsToOpenFair($terminal->station_id)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se puede abrir la caja: la feria de esta estación no está abierta.',
+            ], 422);
+        }
+
+        // Tampoco si el stand está desactivado. El listado de sesiones muestra
+        // todas las estaciones de la feria para poder cerrar cajas de stands ya
+        // dados de baja, así que sin esta validación seguían apareciendo con
+        // botón de "Aperturar".
+        if (! $terminal->station || ! $terminal->station->status) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No se puede abrir la caja: el stand está desactivado.',
+            ], 422);
+        }
 
         // Verificar si ya tiene apertura sin cierre
         $alreadyOpen = PaymentTerminalOpening::where('payment_terminal_id', $data['payment_terminal_id'])
@@ -141,7 +195,8 @@ class PaymentTerminalSessionController extends Controller
     {
         $opening = PaymentTerminalOpening::with('terminal')->findOrFail($openingId);
 
-        if ($opening->is_closed) {
+        // Guarda de doble cierre: una apertura ya conciliada no puede cerrarse otra vez.
+        if ($opening->closing()->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Esta apertura ya fue cerrada.',
@@ -163,12 +218,13 @@ class PaymentTerminalSessionController extends Controller
         try {
 
             // ==========================================
-            // Total de transacciones en EFECTIVO
+            // Monto esperado = ventas en efectivo + tarjeta.
+            // Incluye método 4 (MIXTO): su 'amount' es 100% efectivo+tarjeta.
             // ==========================================
             $cashTransactionsTotal = \Modules\Caja\Models\Transaction::where('payment_terminal_opening_id', $opening->id)
                 ->where('status_id', 1)
                 ->where('transaction_type_id', 1)
-                ->whereIn('payment_method_id', [1, 2])->sum('amount');
+                ->whereIn('payment_method_id', [1, 2, 4])->sum('amount');
             // ==========================================
             // Calcular monto esperado (apertura + efectivo)
             // ==========================================
@@ -238,9 +294,9 @@ class PaymentTerminalSessionController extends Controller
             ->where('transaction_type_id', 1)
             ->get();
 
-        // Totales por método de pago
-        $totalCash   = $transactions->where('payment_method_id', 1)->sum('amount');
-        $totalCard   = $transactions->where('payment_method_id', 2)->sum('amount');
+        // Totales por método de pago (incluye desglose de ventas mixtas)
+        $totalCash   = $this->sumCash($transactions);
+        $totalCard   = $this->sumCard($transactions);
         $totalChivo  = $transactions->where('payment_method_id', 3)->sum('amount');
         $totalTransacted = $transactions->sum('amount');
 
@@ -313,7 +369,11 @@ class PaymentTerminalSessionController extends Controller
             ], 400);
         }
 
-        // Buscar terminal asociada a la estación (ajusta el where si tu columna es diferente)
+        // Terminal del cajero en sesión dentro de esta estación. Un stand puede
+        // tener varias terminales (una por cajero), así que solo se devuelve la
+        // suya: antes había un fallback a la primera de la estación, y eso le
+        // mostraba a un cajero la caja de otro cuando entraba por un stand donde
+        // no tiene terminal asignada.
         $terminal = PaymentTerminal::with([
             'station',
             'user',
@@ -322,12 +382,15 @@ class PaymentTerminalSessionController extends Controller
                     ->orderByDesc('opening_date')
                     ->limit(1);
             }
-        ])->where('station_id', $stationId)->first();
+        ])
+            ->where('station_id', $stationId)
+            ->where('user_id', Auth::id())
+            ->first();
 
         if (!$terminal) {
             return response()->json([
                 'success' => false,
-                'message' => 'No terminal found for this station'
+                'message' => 'No tiene una caja asignada en esta estación.'
             ], 404);
         }
 
@@ -340,8 +403,8 @@ class PaymentTerminalSessionController extends Controller
                 ->where('transaction_type_id', 1)
                 ->get();
 
-            $opening->total_cash       = $transactions->where('payment_method_id', 1)->sum('amount');
-            $opening->total_card       = $transactions->where('payment_method_id', 2)->sum('amount');
+            $opening->total_cash       = $this->sumCash($transactions);
+            $opening->total_card       = $this->sumCard($transactions);
             $opening->total_chivo      = $transactions->where('payment_method_id', 3)->sum('amount');
             $opening->total_transacted = $transactions->sum('amount');
         }
@@ -356,7 +419,7 @@ class PaymentTerminalSessionController extends Controller
     {
         $opening = PaymentTerminalOpening::with('terminal')->findOrFail($openingId);
 
-        if ($opening->is_closed ?? false) {
+        if ($opening->closing()->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Esta apertura ya fue cerrada.',
@@ -376,8 +439,8 @@ class PaymentTerminalSessionController extends Controller
                 ->where('transaction_type_id', 1)
                 ->get();
 
-            $totalCash   = $transactions->where('payment_method_id', 1)->sum('amount');
-            $totalCard   = $transactions->where('payment_method_id', 2)->sum('amount');
+            $totalCash   = $this->sumCash($transactions);
+            $totalCard   = $this->sumCard($transactions);
             $totalChivo  = $transactions->where('payment_method_id', 3)->sum('amount');
             $totalTransacted = $transactions->sum('amount');
 

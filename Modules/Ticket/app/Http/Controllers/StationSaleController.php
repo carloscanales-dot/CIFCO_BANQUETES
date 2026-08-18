@@ -15,9 +15,15 @@ class StationSaleController extends Controller
     {
         $user = $request->user();
 
-        // Obtener la estación asignada al usuario
+        // Obtener la estación asignada al usuario. Si tuviera stands en varias
+        // ferias, se prefiere el de una feria ABIERTA (status = 2) y la más reciente.
         $station = DB::table('station_users')
-            ->where('user_id', $user->id)
+            ->join('stations', 'station_users.station_id', '=', 'stations.id')
+            ->join('fairs', 'stations.fair_id', '=', 'fairs.id')
+            ->where('station_users.user_id', $user->id)
+            ->orderByRaw('CASE WHEN fairs.status = 2 THEN 0 ELSE 1 END')
+            ->orderByDesc('fairs.start_date')
+            ->select('station_users.station_id')
             ->first();
 
         if (!$station) {

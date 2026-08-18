@@ -17,6 +17,7 @@ export const useTicketStore = defineStore('ticketStore', () => {
     status_id: 3, // Por defecto PENDIENTE
     quantity: null,
     product_id: null,
+    fair_id: null, // Feria a la que pertenecen las cortesías (obligatorio)
     generated_for: null,
   })
 

@@ -16,7 +16,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/', [PaymentTerminalController::class, 'store'])->name('store');
         Route::put('/{paymentTerminal}', [PaymentTerminalController::class, 'update'])->name('update');
         Route::delete('/{paymentTerminal}', [PaymentTerminalController::class, 'destroy'])->name('destroy');
-        Route::post('/{paymentTerminal}/toggle-status', [PaymentTerminalController::class, 'toggleStatus'])->name('toggle-status');
         Route::get('/{paymentTerminal}/status', [PaymentTerminalController::class, 'getStatus'])->name('status');
     });
 

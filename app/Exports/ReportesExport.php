@@ -64,11 +64,11 @@ class TransaccionesSheet implements FromCollection, WithHeadings, WithMapping, W
 
         // Aplicar filtros
         if (!empty($this->filters['fecha_inicio'])) {
-            $query->whereDate('t.transaction_date', '>=', $this->filters['fecha_inicio']);
+            $query->where('t.jornada', '>=', $this->filters['fecha_inicio']);
         }
 
         if (!empty($this->filters['fecha_fin'])) {
-            $query->whereDate('t.transaction_date', '<=', $this->filters['fecha_fin']);
+            $query->where('t.jornada', '<=', $this->filters['fecha_fin']);
         }
 
         if (!empty($this->filters['station_id'])) {
@@ -146,11 +146,11 @@ class DetalleProductosSheet implements FromCollection, WithHeadings, WithMapping
 
         // Aplicar filtros
         if (!empty($this->filters['fecha_inicio'])) {
-            $query->whereDate('t.transaction_date', '>=', $this->filters['fecha_inicio']);
+            $query->where('t.jornada', '>=', $this->filters['fecha_inicio']);
         }
 
         if (!empty($this->filters['fecha_fin'])) {
-            $query->whereDate('t.transaction_date', '<=', $this->filters['fecha_fin']);
+            $query->where('t.jornada', '<=', $this->filters['fecha_fin']);
         }
 
         if (!empty($this->filters['station_id'])) {
@@ -248,10 +248,10 @@ class EstadisticasSheet implements FromCollection, WithHeadings, WithStyles, Wit
             ->where('t.transaction_type_id', 1);
 
         if (!empty($this->filters['fecha_inicio'])) {
-            $query->whereDate('t.transaction_date', '>=', $this->filters['fecha_inicio']);
+            $query->where('t.jornada', '>=', $this->filters['fecha_inicio']);
         }
         if (!empty($this->filters['fecha_fin'])) {
-            $query->whereDate('t.transaction_date', '<=', $this->filters['fecha_fin']);
+            $query->where('t.jornada', '<=', $this->filters['fecha_fin']);
         }
         if (!empty($this->filters['station_id'])) {
             $query->where('t.station_id', $this->filters['station_id']);
@@ -273,17 +273,30 @@ class EstadisticasSheet implements FromCollection, WithHeadings, WithStyles, Wit
             ->limit(10)
             ->get();
 
-        // Ventas por método de pago
-        $ventasPorMetodo = DB::table('transactions as t')
-            ->leftJoin('payment_method as pm', 't.payment_method_id', '=', 'pm.payment_method_id')
-            ->select(
-                'pm.payment_method',
-                DB::raw('COUNT(*) as total_transacciones'),
-                DB::raw('SUM(t.amount) as total_monto')
-            )
-            ->whereIn('t.id', $transactionIds)
-            ->groupBy('pm.payment_method')
+        // Ventas por método de pago. Las mixtas (método 4) se reparten en su
+        // parte efectivo y su parte tarjeta (igual que el arqueo de caja).
+        $txForPago = DB::table('transactions')
+            ->whereIn('id', $transactionIds)
+            ->select('payment_method_id', 'amount', 'amount_cash', 'amount_card')
             ->get();
+
+        $cashTotal  = $txForPago->where('payment_method_id', 1)->sum('amount')
+                    + $txForPago->where('payment_method_id', 4)->sum('amount_cash');
+        $cardTotal  = $txForPago->where('payment_method_id', 2)->sum('amount')
+                    + $txForPago->where('payment_method_id', 4)->sum('amount_card');
+        $chivoTotal = $txForPago->where('payment_method_id', 3)->sum('amount');
+
+        $cashCount  = $txForPago->where('payment_method_id', 1)->count()
+                    + $txForPago->where('payment_method_id', 4)->where('amount_cash', '>', 0)->count();
+        $cardCount  = $txForPago->where('payment_method_id', 2)->count()
+                    + $txForPago->where('payment_method_id', 4)->where('amount_card', '>', 0)->count();
+        $chivoCount = $txForPago->where('payment_method_id', 3)->count();
+
+        $ventasPorMetodo = collect([
+            (object) ['payment_method' => 'EFECTIVO', 'total_transacciones' => $cashCount,  'total_monto' => round($cashTotal, 2)],
+            (object) ['payment_method' => 'TARJETA',  'total_transacciones' => $cardCount,  'total_monto' => round($cardTotal, 2)],
+            (object) ['payment_method' => 'CHIVO',    'total_transacciones' => $chivoCount, 'total_monto' => round($chivoTotal, 2)],
+        ])->filter(fn($r) => $r->total_monto > 0 || $r->total_transacciones > 0)->values();
 
         // Ventas por estación
         $ventasPorEstacion = DB::table('transactions as t')

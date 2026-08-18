@@ -94,21 +94,32 @@ class PaymentTerminalOpening extends Model
             ->sum('amount');
     }
 
-    /** Total por método de pago */
+    /**
+     * Total por método de pago. Las ventas MIXTAS (método 4) se reparten: su
+     * parte en efectivo suma a EFECTIVO y su parte en tarjeta a TARJETA.
+     */
     public function getTotalCashAttribute()
     {
-        return $this->transactions()
-            ->where('payment_method_id', 1)
-            ->where('transaction_type_id', 1)
-            ->sum('amount');
+        return (float) $this->transactions()
+                ->where('transaction_type_id', 1)
+                ->where('payment_method_id', 1)
+                ->sum('amount')
+            + (float) $this->transactions()
+                ->where('transaction_type_id', 1)
+                ->where('payment_method_id', 4)
+                ->sum('amount_cash');
     }
 
     public function getTotalCardAttribute()
     {
-        return $this->transactions()
-            ->where('payment_method_id', 2)
-            ->where('transaction_type_id', 1)
-            ->sum('amount');
+        return (float) $this->transactions()
+                ->where('transaction_type_id', 1)
+                ->where('payment_method_id', 2)
+                ->sum('amount')
+            + (float) $this->transactions()
+                ->where('transaction_type_id', 1)
+                ->where('payment_method_id', 4)
+                ->sum('amount_card');
     }
 
     public function getTotalChivoAttribute()

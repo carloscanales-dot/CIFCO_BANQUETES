@@ -1,6 +1,6 @@
 <script setup>
-import { reactive, ref, inject } from 'vue'
-import { Head } from '@inertiajs/vue3'
+import { reactive, ref, inject, computed } from 'vue'
+import { Head, usePage } from '@inertiajs/vue3'
 import Breadcrumbs from '@/Components/Breadcrumbs.vue'
 import DeleteDialog from '@/Components/DeleteDialog.vue'
 import { useStationStore } from '@/Stores/Ticket/stationStore'
@@ -9,6 +9,7 @@ import AdminLayout from '@/Layouts/AdminLayout.vue'
 import StationProductDialog from '@/Components/Ticket/StationProductDialog.vue'
 import StationUserDialog from '@/Components/Ticket/StationUserDialog.vue'
 
+const page = usePage()
 const search = ref(null)
 const deleteId = ref(null)
 const deleteDialog = ref(false)
@@ -20,9 +21,16 @@ const helpers = inject('helpers')
 const stationStore = useStationStore()
 const { items, totalItems, isLoading } = storeToRefs(stationStore)
 
+// Selector de feria (por defecto la feria abierta más reciente).
+const statusText = { 1: 'Programada', 2: 'Abierta', 3: 'Cerrada' }
+const fairOptions = computed(() =>
+  (page.props.fairs || []).map((f) => ({ ...f, label: `${f.fair_name} · ${statusText[f.status] || ''}` }))
+)
+
 const filterForm = reactive({
   station_name: null,
   status: null,
+  fair_id: page.props.selectedFairId ?? null,
 })
 
 const openUserDialog = (station) => {
@@ -88,7 +96,20 @@ const applyFilter = () => {
     <VCard title="Formulario de filtro">
       <VCardText>
         <VRow dense>
-          <VCol cols="12" md="6">
+          <VCol cols="12" md="4">
+            <VAutocomplete
+              v-model="filterForm.fair_id"
+              :items="fairOptions"
+              item-title="label"
+              item-value="id"
+              label="Feria"
+              hide-details
+              clearable
+              @update:model-value="applyFilter"
+            />
+          </VCol>
+
+          <VCol cols="12" md="4">
             <VTextField
               v-model="filterForm.station_name"
               label="Nombre de la estación"
@@ -97,7 +118,7 @@ const applyFilter = () => {
             />
           </VCol>
 
-          <VCol cols="12" md="6">
+          <VCol cols="12" md="4">
             <VRadioGroup v-model="filterForm.status" label="Estatus" hide-details inline>
               <VRadio value="Activa" label="Activa" />
               <VRadio value="Inactiva" label="Inactiva" />

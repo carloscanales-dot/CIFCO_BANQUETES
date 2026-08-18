@@ -4,7 +4,6 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-use Illuminate\Support\Facades\Artisan;
 
 class Kernel extends ConsoleKernel
 {
@@ -13,10 +12,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        $schedule->call(function () {
-            Artisan::call('migrate:fresh');
-            Artisan::call('db:seed');
-        })->hourly();
+        // Aquí había un migrate:fresh + db:seed cada hora, que borra todas las
+        // tablas y las recrea vacías. Nunca se disparó porque el hosting
+        // compartido no ejecuta schedule:run, pero habría destruido la base en
+        // cuanto se configurara el cron estándar de Laravel en un servidor
+        // propio. No agregar tareas destructivas aquí.
     }
 
     /**

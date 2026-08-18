@@ -50,8 +50,18 @@ class ReaderController extends Controller
         $assigned = true;
 
         if ($station) {
-            $productId = DB::table('v_tickets')->where('uuid', 'like', '%' . $uuid . '%')->value('product_id');
+            $productId = DB::table('v_tickets')->where('uuid', trim($uuid))->value('product_id');
             $stationId = $station->station_id;
+
+            // ✅ La cortesía debe pertenecer a la feria del stand (si está atada a una).
+            $ticketFairId = DB::table('tickets')->where('id', $ticket->ticket_id)->value('fair_id');
+            if ($ticketFairId && (int) $ticketFairId !== (int) $station->fair_id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Esta cortesía pertenece a otra feria y no puede canjearse en este stand.',
+                    'ticket' => $ticket,
+                ]);
+            }
 
             // ✅ Verificar si el ticket YA FUE ESCANEADO en esta estación
             $alreadyScanned = DB::table('station_tickets')
@@ -138,6 +148,14 @@ class ReaderController extends Controller
 
         $productId = $ticket->product_id;
         $stationId = $station->station_id;
+
+        // La cortesía debe pertenecer a la feria del stand (si está atada a una).
+        if ($ticket->fair_id && (int) $ticket->fair_id !== (int) $station->fair_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Esta cortesía pertenece a otra feria y no puede canjearse en este stand.'
+            ], 403);
+        }
 
         $hasProduct = DB::table('station_products')
             ->where('station_id', $stationId)
@@ -228,8 +246,15 @@ class ReaderController extends Controller
     {
         $user = Auth::user();
 
+        // Un cajero podría tener asignaciones en varias ferias; se prefiere el
+        // stand de una feria ABIERTA (status = 2) y, entre ellas, la más reciente.
         return DB::table('station_users')
-            ->where('user_id', $user->id)
+            ->join('stations', 'station_users.station_id', '=', 'stations.id')
+            ->join('fairs', 'stations.fair_id', '=', 'fairs.id')
+            ->where('station_users.user_id', $user->id)
+            ->orderByRaw('CASE WHEN fairs.status = 2 THEN 0 ELSE 1 END')
+            ->orderByDesc('fairs.start_date')
+            ->select('station_users.station_id', 'stations.fair_id')
             ->first();
     }
 
@@ -255,6 +280,9 @@ class ReaderController extends Controller
             ->when($request->get('uuid'), function ($query, $uuid) {
                 return $query->where('uuid', 'like', '%' . $uuid . '%');
             })
+            ->when($request->get('fair_id'), function ($query, $fair_id) {
+                return $query->where('fair_id', $fair_id);
+            })
             ->when($request->get('start_id'), function ($query, $start_id) {
                 return $query->where('ticket_id', '>=', $start_id);
             })
@@ -267,8 +295,11 @@ class ReaderController extends Controller
 
     private function getTicket($uuid)
     {
+        // Coincidencia EXACTA: el QR codifica el uuid tal cual. Un LIKE '%uuid%'
+        // colisiona con uuids donde uno es substring de otro (p. ej. MINI-1 vs
+        // MINI-10) y podría devolver/canjear un ticket distinto al escaneado.
         return DB::table('v_tickets')
-            ->where('uuid', 'like', '%' . $uuid . '%')
+            ->where('uuid', trim($uuid))
             ->select('ticket_id', 'product_name', 'uuid', 'unit_price', 'status_id', 'status')
             ->first();
     }
